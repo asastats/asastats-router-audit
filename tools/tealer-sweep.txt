@@ -1,0 +1,126 @@
+revision  75087b8
+tree      2 file(s) modified
+started   2026-08-29 15:17:26Z
+
+== compiling with mainnet template values ==
+[32minfo: [0musing puyapy version 5.9.0[0m
+[33mwarning: [0mcannot determine package root for contracts/router_app.py[0m
+[32minfo: [0musing python search path: ['/home/ipaleka/dev/venvs/frontend/lib/python3.13/site-packages'][0m
+[32minfo: [0mWriting build/tealer/Router.arc56.json[0m
+[32minfo: [0mWriting build/tealer/Router.approval.teal[0m
+[32minfo: [0mWriting build/tealer/Router.clear.teal[0m
+[32minfo: [0mWriting build/tealer/Router.approval.puya.map[0m
+[32minfo: [0mWriting build/tealer/Router.clear.puya.map[0m
+substituted; 4681 lines
+== unprotected-updatable ==
+   impact:   HIGH
+   status:   9 results
+== unprotected-deletable ==
+   impact:   HIGH
+   status:   9 results
+== can-close-account ==
+   impact:   HIGH
+   status:   0 results
+== can-close-asset ==
+   impact:   HIGH
+   status:   0 results
+== group-size-check ==
+   == group-size-check (covered) ==
+   
+   tealer enumeration:   not analysed - the path walk exceeds the 1h
+                         timeout and the 8 GB ulimit; its log is
+                         empty. This block replaces that absence.
+   
+   Static vacuousness proof (reuses tealer's parser and predicate;
+   no path enumeration, runs in milliseconds):
+     basic blocks: 252
+     absolute group-access blocks: 0
+     dynamic group accesses (gtxns/gtxnsa/gtxnsas): 52
+     => group-size-check cannot report: every group access is dynamic
+        (index = Txn.group_index + offset), so its report predicate is
+        false on every path. Vacuous, not clean.
+   
+   GroupSize guard sites (8 reads):
+     teal 548: contracts/router_app.py:975
+     teal 1588: contracts/router_app.py:1036
+     teal 1942: contracts/router_app.py:756
+     teal 2015: contracts/router_app.py:819
+     teal 2042: contracts/router_app.py:826
+     teal 2170: contracts/router_app.py:858
+     teal 2478: contracts/router_app.py:1012
+     teal 4190: contracts/router_app.py:1849
+   
+   Auditor note: verify, at each dynamic site, that the relative index
+   is provably in [0, GroupSize). The guards above are where that is
+   established (urange over GroupSize, or an explicit
+   assert index < GroupSize before the gtxns/gtxnsa).
+   
+== constant-gtxn ==
+   impact:   OPTIMIZATION
+   status:   clean - 0 results
+== self-access ==
+   impact:   OPTIMIZATION
+   status:   clean - 0 results
+== sender-access ==
+   impact:   OPTIMIZATION
+   status:   clean - 0 results
+== is-updatable ==
+   == is-updatable (covered) ==
+   
+   tealer enumeration:   not analysed - the path walk exceeds the 1h
+                         timeout and the 8 GB ulimit; its log is
+                         empty. This block replaces that absence.
+   
+   This detector is NOT vacuous: the per-block dataflow (no path
+   search) shows the predicate genuinely fires:
+     basic blocks: 252
+     blocks where UpdateApplication is a possible type: 246
+     'UpdateApplication' mentioned in the program: 0 times
+   
+   But approving an UpdateApplication transaction cannot change this
+   program: the ARC-4 dispatcher has no update route - the program
+   contains no branch that installs replacement logic - so every one
+   of tealer's reported paths is a path to an update that cannot
+   happen. False positive, proven by the program it would have to
+   reach; see docs/tealer-triage.md.
+   
+   
+== is-deletable ==
+   == is-deletable (covered) ==
+   
+   tealer enumeration:   not analysed - the path walk exceeds the 1h
+                         timeout and the 8 GB ulimit; its log is
+                         empty. This block replaces that absence.
+   
+   This detector is NOT vacuous: the per-block dataflow (no path
+   search) shows the predicate genuinely fires:
+     basic blocks: 252
+     blocks where DeleteApplication is a possible type: 246
+     'DeleteApplication' mentioned in the program: 3 times
+   
+   This one is a real finding and it is deliberate: delete_application
+   is an @arc4.baremethod(allow_actions=["DeleteApplication"]) that
+   retires the app to release the float, and it is guarded before it
+   can complete: _assert_group_is_clean, sender == self.admin, and
+   accrued == 0 (contracts/router_app.py:1006-1035). Deletable by its
+   admin on purpose - not a flaw.
+   
+   
+== clear-is-updatable ==
+   impact:   HIGH
+   status:   1 results
+== clear-missing-fee-check ==
+   impact:   HIGH
+   status:   1 results
+== clear-rekey-to ==
+   impact:   HIGH
+   status:   1 results
+== clear-group-size-check ==
+   impact:   HIGH
+   status:   0 results
+
+Done. Logs in <router-checkout>/build/tealer/detect-*.log
+Total: 1016K	<router-checkout>/build/tealer
+
+finished  2026-08-29 15:17:40Z
+approval  1761d970954e4d7e (4681 lines)

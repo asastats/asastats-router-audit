@@ -1,0 +1,24 @@
+[Unit]
+Description=ASA Stats router monitoring worker
+Wants=network-online.target
+After=network-online.target postgresql.service
+
+[Service]
+Type=simple
+User=asastats
+Group=asastats
+WorkingDirectory=/opt/asastats/engine
+EnvironmentFile=/etc/asastats/router-monitor.env
+ExecStart=/opt/asastats/venv/bin/python manage.py poll_router_monitor
+Restart=on-failure
+RestartSec=10s
+KillSignal=SIGTERM
+TimeoutStopSec=30s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/asastats
+
+[Install]
+WantedBy=multi-user.target

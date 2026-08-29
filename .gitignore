@@ -1,0 +1,13 @@
+# never a real environment file; the tracked ones are *.example
+.env
+*.mnemonic
+*.token
+*.key
+*.pem
+
+# local tooling configuration, per checkout rather than per project
+.claude/
+.mcp.json
+
+__pycache__/
+*.pyc
