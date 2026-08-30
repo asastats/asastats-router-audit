@@ -149,3 +149,37 @@ A vetoed holding becomes `KEEP`, not `UNPRICED`. `UNPRICED` would grow a
 checkbox that `S1`'s veto then refuses — the asset *is* priced elsewhere — and
 the widget's own `INERT` docstring already says a control that quietly does
 nothing is worse than none.
+
+## 6. Measured against live data
+
+The divergence this finding rests on was argued from the xALGO/tALGO incident
+rather than measured, because measuring it needs an account evaluation and the
+router's `al:*` map at the same moment. Both, on three real accounts:
+
+```
+holdings       : 104        priced by both : 90
+router unpriced: 14
+
+router value / evaluation value
+  min 0.753 (FAME)   median 1.001 (xALGO)   max 3.503 (frUSDC)
+
+in the router's forfeit band : 29
+  disputed by the evaluation : 0
+```
+
+**The guard is idle here, and that is the right result.** The two sources agree
+to within a tenth of a percent at the median, and all 29 holdings the router
+calls dust are agreed by the evaluation, so nothing this account wanted swept
+is refused.
+
+**The disagreement it guards against is real all the same.** FAME is priced 25%
+below the evaluation and frUSDC 250% above. The low direction is the dangerous
+one, because that is what carries a holding into a band 0.1 ALGO wide that it
+does not belong in. Nothing here sits close enough to the edge for that to
+happen today.
+
+A healthy cache producing no dispute is the expected reading, not a refutation:
+the fault this answers is a cache defect, and the xALGO one is three weeks old.
+
+Reproduce with
+[verification/measure-divergence.py](../verification/measure-divergence.py).

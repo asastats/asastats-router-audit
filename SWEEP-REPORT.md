@@ -180,28 +180,73 @@ to is a different question from reading whether it is tested.
   `S3` at the prompt. That is not counted as a control here: the group carries
   up to sixteen transactions, and the reader has no reference value to compare
   against for either field.
-- **Whether the two price sources disagree on live data today.** `S4` is
-  argued structurally and from the documented xALGO/tALGO incident, not from a
-  live divergence measured on the day. Measuring one needs the full engine; the
-  checkout available to this audit is a partial export whose evaluation seams
-  are stubs.
-
-  What *was* confirmed against live data, after the fix, is the half that fails
-  quiet: two real account evaluations, 73 `asaitems` between them, every entry
-  parsed by `values_by_evaluation` and every figure matching the payload's own
-  arithmetic. On the larger account the guard leaves 24 holdings both sources
-  agree are dust forfeitable, and would protect the other 38 if the router ever
-  mispriced one into the band. A serializer change that broke the parse would
-  yield no entries and silently disable the guard, so it is pinned by a test.
 - The AMM contracts, key management, deployment operations, formal
   verification, and economic modelling — as in [REPORT.md §5](REPORT.md).
 
-## 6. Reproducing
+This section used to carry a third entry: whether the two price sources
+actually disagree on live data, which needs the full engine and was beyond what
+the partial export here could produce. It has since been measured, and moves to
+§6.
+
+## 6. The divergence behind `S4`, measured
+
+`S4` was argued structurally and from the documented xALGO/tALGO incident
+rather than from a live measurement, because measuring one needs both halves at
+once: an account evaluation, which only the full engine produces, and the
+router's `al:*` map. With three real evaluations and a Redis read, from
+[verification/measure-divergence.py](verification/measure-divergence.py):
+
+```
+accounts       : 3
+holdings       : 104
+priced by both : 90
+router unpriced: 14
+
+agreement (router value / evaluation value)
+  min      0.753   (FAME on VW55K)
+  median   1.001   (xALGO on 2EVGZ)
+  max      3.503   (frUSDC on 2EVGZ)
+
+in the router's forfeit band : 29
+  disputed by the evaluation : 0
+```
+
+Three things follow, and the third is the one worth stating plainly.
+
+**The guard is inert in normal operation.** A median ratio of 1.001 across 90
+paired holdings is the two sources agreeing, and all 29 holdings in the forfeit
+band are agreed by both. `disputed_dust` refuses nothing on this sample, so it
+costs these users no dust holding they wanted swept. That is what a veto should
+look like when nothing is wrong.
+
+**The disagreement it exists for is real and large.** The tails are 0.753 and
+3.503 — FAME priced 25% *below* the evaluation, frUSDC 250% above. The
+dangerous direction is the low one, since that is what carries a holding down
+into a 0.1 ALGO band it does not belong in. Nothing in this sample sits close
+enough to the edge for a 25% error to move it across, but the width is not
+hypothetical and the band is narrow.
+
+**No live dispute was found today, and that is not evidence the finding was
+wrong.** `S4` is about what happens when the router's price map is wrong, and
+the xALGO/tALGO incident three weeks ago is the proof that it can be — an
+entire asset class unpriced because one synthetic pool evicted every real one.
+A sample taken while the cache is healthy shows the guard idle, which is the
+expected reading, not a refutation. The measurement that would refute it is a
+cache defect that produced no dispute, and this is not that.
+
+Worth recording alongside: **14 of the 104 holdings are unpriced by the
+router** and land in `UNPRICED`, where `S1`'s veto is what protects them. That
+path is not an edge case.
+
+## 7. Reproducing
 
 ```sh
 ROUTER=/path/to/router WIDGETS=/path/to/widgets ENGINE=/path/to/engine \
 ALGOD_URL=https://your-node SWEEP_ADDRESS=SOMEADDRESS… \
     ./verification/verify-sweep.sh
+
+REDIS_AUTH=… ROUTER=/path/to/router \
+    python verification/measure-divergence.py evaluation.json …
 ```
 
 Reads only; submits nothing. The chain cases use `simulate` with
