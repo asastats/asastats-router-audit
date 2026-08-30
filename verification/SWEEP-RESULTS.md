@@ -124,4 +124,20 @@ All three findings survived the first column. That is the point of
 which claims were tested.
 
 Wider suites at the fixed revision: router 963 passed / 1 skipped, engine core
-569 passed / 1 skipped, widgets 196 passed, wallet 101 passed.
+569 passed / 1 skipped, widgets 196 passed, wallet 107 passed.
+
+## A coverage note worth the same scepticism as the rest
+
+`npm run test:coverage` in `frontend/wallet` reports 100% across seven modules.
+It does not cover `swapBootstrap.ts`, which carries `/* istanbul ignore file */`
+on its first line; four other modules are excluded by `collectCoverageFrom`.
+Deleting that one comment reports the file at 14.49% of statements and 5% of
+functions, and takes the project total to 85.91%.
+
+The fix for [`S2`](../findings/S2-forfeit-target-self-certifying.md) first
+landed in that file, so the *only* source of truth behind the forfeit check sat
+in the one module the coverage number cannot see, with no test importing it at
+all. `assetCreator` now lives in `swapBridge.ts` and the wiring stays behind.
+
+Recorded here because it is the same failure the audit is about, one layer out:
+a number that reads as complete, over a scope nobody restated.

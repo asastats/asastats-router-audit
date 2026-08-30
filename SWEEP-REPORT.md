@@ -177,11 +177,19 @@ to is a different question from reading whether it is tested.
   `S3` at the prompt. That is not counted as a control here: the group carries
   up to sixteen transactions, and the reader has no reference value to compare
   against for either field.
-- **Whether the two price sources disagree on live data today.** Establishing
-  this needs the full engine; the checkout available to this audit is a partial
-  export whose evaluation seams are stubs. `S4` is argued structurally and from
-  the documented xALGO/tALGO incident, not from a live divergence measured
-  today.
+- **Whether the two price sources disagree on live data today.** `S4` is
+  argued structurally and from the documented xALGO/tALGO incident, not from a
+  live divergence measured on the day. Measuring one needs the full engine; the
+  checkout available to this audit is a partial export whose evaluation seams
+  are stubs.
+
+  What *was* confirmed against live data, after the fix, is the half that fails
+  quiet: two real account evaluations, 73 `asaitems` between them, every entry
+  parsed by `values_by_evaluation` and every figure matching the payload's own
+  arithmetic. On the larger account the guard leaves 24 holdings both sources
+  agree are dust forfeitable, and would protect the other 38 if the router ever
+  mispriced one into the band. A serializer change that broke the parse would
+  yield no entries and silently disable the guard, so it is pinned by a test.
 - The AMM contracts, key management, deployment operations, formal
   verification, and economic modelling — as in [REPORT.md §5](REPORT.md).
 
