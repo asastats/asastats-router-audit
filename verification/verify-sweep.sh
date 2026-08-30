@@ -321,6 +321,63 @@ else
 fi
 
 echo
+echo "Before RESTRICT_TO_ADMIN comes off — the two levers that replace it"
+echo "-------------------------------------------------------------------------"
+
+check "routing can be stopped without a redeploy" "1" \
+    "$(grep -c 'def set_paused' "${CONTRACT}")"
+check "both route entry points honour the pause" "2" \
+    "$(grep -c 'assert not self.paused, "routing is paused"' "${CONTRACT}")"
+check "the pause is admin-only" "1" \
+    "$(grep -c 'only the admin may pause routing' "${CONTRACT}")"
+check "close_holding is NOT paused, so recovery survives it" "0" \
+    "$(sed -n '/def close_holding/,/def route/p' "${CONTRACT}" | grep -c 'self.paused')"
+check "one route's input is bounded" "1" \
+    "$(grep -c 'def set_max_input' "${CONTRACT}")"
+check "the cap covers both the ALGO and the ASA branch" "2" \
+    "$(sed -n '/def _input_amount/,/def _assert_input_spent/p' "${CONTRACT}" | grep -c 'self.max_input, "input above the cap"')"
+check "a zero cap is refused rather than meaning unlimited" "1" \
+    "$(grep -c 'the input cap cannot be zero' "${CONTRACT}")"
+check "deployments start at 50,000 ALGO" "1" \
+    "$(grep -c 'INITIAL_MAX_INPUT = 50_000_000_000' "${CONTRACT}")"
+
+# The two new fields move the global schema from (2, 5) to (4, 5). Three
+# LocalNet fixtures used to pin the old pair by hand, and getting it wrong is
+# an opaque HTTP 400 from the create rather than anything that names state --
+# so nothing should restate it now.
+check "the contract carries four global uints" "4" \
+    "$(sed -n '/def __init__/,/def set_paused/p' "${CONTRACT}" | grep -c 'UInt64(')"
+check "the test harness takes the schema from the compiler" "1" \
+    "$(grep -c 'CompiledContract = namedtuple' "${ROUTER}/tests/localnet.py")"
+check "no fixture pins a schema by hand any more" "0" \
+    "$(grep -c '(2, 5)' "${ROUTER}/tests/test_contract_localnet.py")"
+
+# Derived, not listed -- the method that found 12 of 14 when a hand pass had
+# said 14 of 14, and that caught these two setters arriving without the guard.
+cat > "${WORK}/guards.py" <<'GUARDS'
+import re
+import sys
+
+source = open(sys.argv[1]).read()
+parts = re.split(r"\n    @arc4\.(?:abimethod|baremethod)[^\n]*\n", source)
+names, unguarded = [], []
+for body in parts[1:]:
+    named = re.match(r"\s*def (\w+)", body)
+    if not named:
+        continue
+    end = re.search(r"\n    @(arc4\.(abimethod|baremethod)|subroutine)", body)
+    chunk = body[: end.start()] if end else body
+    names.append(named.group(1))
+    if "_assert_group_is_clean()" not in chunk:
+        unguarded.append(named.group(1))
+print(f"{len(names)}/{len(names) - len(unguarded)}/{','.join(sorted(unguarded))}")
+GUARDS
+
+check "16 entry points, 14 walking the group, 2 inert" \
+    "16/14/pool_budget,verify_discount" \
+    "$("${PYTHON}" "${WORK}/guards.py" "${CONTRACT}" 2>/dev/null || echo unknown)"
+
+echo
 echo "S5 — does a malformed payload degrade rather than raise?"
 echo "-------------------------------------------------------------------------"
 

@@ -10,7 +10,7 @@ own. For the contract, read [REPORT.md](REPORT.md).
   `router/sweep.py`, `router/selection.py`, `engine/core/sweep.py`, and the
   wallet bridge's `signAndSend`
 - **Verification:** [verification/verify-sweep.sh](verification/verify-sweep.sh)
-  — 33 checks, all passing, none skipped
+  — 45 checks, all passing, none skipped
 - **Findings:** four — three Medium and one Informational, all fixed. One of
   the fixes is source-only until the contract is redeployed.
 

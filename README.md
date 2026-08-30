@@ -41,10 +41,17 @@ that produced the first finding. They turned up a fourth defect on their first
 run, in both languages at once. See [SWEEP-REPORT.md](SWEEP-REPORT.md).
 
 **The mainnet deployment is restricted to its admin, and this audit does not
-clear it to be otherwise.** Every audit of this contract — this one included —
-was produced by an AI system, and none has been reviewed by a human with
-Algorand experience. Two prior audits recommended lifting that restriction and
-both were arguing from a false statement of fact. See
+clear it to be otherwise.** What it does do is remove the reason that
+restriction was load-bearing twice over: while it is set, the admin is the only
+caller *and* the only stop button, because the contract had none. It now has
+`set_paused` and a bounded `set_max_input` — see
+[what has to exist first](contracts/going-unrestricted.md).
+
+Every audit of this contract — this one included — was produced by an AI
+system, and none has been reviewed by a human with Algorand experience. Two
+prior audits recommended lifting that restriction and both were arguing from a
+false statement of fact, which is why the two mechanisms above are written to
+hold whether or not any of this analysis is correct. See
 [DISCLAIMER.md](DISCLAIMER.md).
 
 ## Check it yourself
@@ -54,7 +61,7 @@ Every factual claim in the report is a command:
 ```bash
 cd verification
 ROUTER=/path/to/router ./verify.sh          # the contract — 27 checks
-ROUTER=/path/to/router ./verify-sweep.sh    # the dust sweep — 33 checks
+ROUTER=/path/to/router ./verify-sweep.sh    # the dust sweep — 45 checks
 ```
 
 `verify.sh` needs no node, no credentials and no network. `verify-sweep.sh`
@@ -76,7 +83,7 @@ report's final sections say what was deliberately left unchecked.
 | [DISCLAIMER.md](DISCLAIMER.md) | how this was produced and what that costs |
 | [findings/](findings/) | one file per finding |
 | [verification/](verification/) | the scripts behind every claim, and their recorded output |
-| [contracts/](contracts/) | access-control matrix and architecture notes |
+| [contracts/](contracts/) | access-control matrix, architecture notes, and [what has to exist before the admin restriction comes off](contracts/going-unrestricted.md) |
 | [tools/](tools/) | Tealer static analysis |
 | [history/](history/) | audits v1–v5 as issued, and what each got wrong |
 | [methodology/](methodology/) | scope, approach, and what an AI audit can and cannot do |

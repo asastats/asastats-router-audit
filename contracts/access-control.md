@@ -4,7 +4,7 @@ Produced by parsing `contracts/router_app.py` for decorated entry points and
 the guards inside each body, rather than read off by eye. Reproduce with
 [verification/verify.sh](../verification/verify.sh).
 
-## The 14 entry points
+## The 16 entry points
 
 | method | admin | `RESTRICT_TO_ADMIN` | group hygiene | additional |
 |---|:---:|:---:|:---:|---|
@@ -14,6 +14,8 @@ the guards inside each body, rather than read off by eye. Reproduce with
 | `set_voucher_signer` | ✓ | | ✓ | |
 | `set_quote_signer` | ✓ | | ✓ | |
 | `set_conversion_pool` | ✓ | | ✓ | |
+| `set_paused` | ✓ | | ✓ | stops `route`/`route3` only |
+| `set_max_input` | ✓ | | ✓ | cap must be non-zero |
 | `convert_and_distribute` | ✓ | | ✓ | pool read from state; no same-group approval |
 | `delete_application` | ✓ | | ✓ | accrued must be 0; no holdings open |
 | `close_holding` | ✓ | ✓ | ✓ | |
@@ -26,9 +28,15 @@ the guards inside each body, rather than read off by eye. Reproduce with
 `RESTRICT_TO_ADMIN` is a compile-time template variable. Every mainnet
 deployment to date has set it; testnet does not.
 
+Two entry points now carry a second gate. `set_paused` stops `route` and
+`route3` in one transaction, and `set_max_input` bounds what one route may take
+in — the two mechanisms that have to exist before the restriction comes off,
+since while it is set it is also the only stop button. See
+[going-unrestricted.md](going-unrestricted.md).
+
 ## `_assert_group_is_clean`
 
-Called by 12 of the 14. It walks **every transaction in the group** and refuses
+Called by 14 of the 16. It walks **every transaction in the group** and refuses
 if any carries:
 
 - `rekey_to != Global.zero_address` — a rekey hands the account away permanently

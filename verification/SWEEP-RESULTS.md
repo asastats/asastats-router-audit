@@ -19,7 +19,7 @@ are closed and `S3` is closed for close-out groups, so each check is now the
 regression test for one of them.
 
 ```
-router:   cc9a4ff   (audited at 8d130d6)
+router:   213f677   (audited at 8d130d6)
 engine:   9320ae2   (audited at 1b2c588)
 frontend: cf958b1   (audited at 2904746)
 widgets:  d1365dc   (audited at 4b4eec8)
@@ -66,6 +66,21 @@ S4 — does a forfeit check the second opinion?
   PASS  both sources calling it dust: still forfeited            forfeit:swept
   PASS  evaluation with no opinion: still forfeited              forfeit:swept
 
+Before RESTRICT_TO_ADMIN comes off — the two levers that replace it
+-------------------------------------------------------------------------
+  PASS  routing can be stopped without a redeploy                1
+  PASS  both route entry points honour the pause                 2
+  PASS  the pause is admin-only                                  1
+  PASS  close_holding is NOT paused, so recovery survives it     0
+  PASS  one route's input is bounded                             1
+  PASS  the cap covers both the ALGO and the ASA branch          2
+  PASS  a zero cap is refused rather than meaning unlimited      1
+  PASS  deployments start at 50,000 ALGO                         1
+  PASS  the contract carries four global uints                   4
+  PASS  the test harness takes the schema from the compiler      1
+  PASS  no fixture pins a schema by hand any more                0
+  PASS  16 entry points, 14 walking the group, 2 inert           16/14/pool_budget,verify_discount
+
 S5 — does a malformed payload degrade rather than raise?
 -------------------------------------------------------------------------
   PASS  the evaluation readers share one shape-tolerant reader   2
@@ -80,7 +95,7 @@ context
   PASS  unpriced is the only disposition that starts off         1
 
 -------------------------------------------------------------------------
-  33 passed, 0 failed, 0 skipped
+  45 passed, 0 failed, 0 skipped
 ```
 
 ## Reading the S2 block
