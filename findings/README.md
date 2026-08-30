@@ -1,7 +1,7 @@
 # Findings
 
-27 in total across seven audits: 23 raised by v1–v5 and closed, one raised by
-the contract audit, and three by the dust sweep audit.
+28 in total across seven audits: 23 raised by v1–v5 and closed, one raised by
+the contract audit, and four by the dust sweep audit.
 
 ## Open
 
@@ -20,11 +20,18 @@ signer's balance until a deployment happens. See [`S3` §7](S3-unbounded-fee.md)
 | [`S2`](S2-forfeit-target-self-certifying.md) | Medium | The browser whitelist does not bind the forfeit destination | **Fixed** `0be86c7` / `199b9a0` |
 | [`S3`](S3-unbounded-fee.md) | Medium | Nothing bounds the fee on a transaction the sweep asks a user to sign | **Fixed** `0be86c7` / `2aad22b` / contract |
 | [`S4`](S4-forfeit-lacks-evaluation-veto.md) | Medium | The evaluation veto guards the opt-in path but not the automatic one | **Fixed** `2aad22b` / `9320ae2` |
+| [`S5`](S5-malformed-evaluation-raises.md) | Info | A malformed evaluation took the whole sweep down rather than degrading | **Fixed** `cc9a4ff` / `d1365dc` |
 
 None was reachable by an unprivileged remote attacker: `S2` and `S3` needed the
-engine's response to be wrong, and `S4` needed only a wrong price. Each is rated
-Medium because it defeated a control built specifically to hold under those
-conditions, and because the value each exposed was unbounded.
+engine's response to be wrong, and `S4` needed only a wrong price. Each of those
+three is rated Medium because it defeated a control built specifically to hold
+under those conditions, and because the value each exposed was unbounded.
+
+`S5` is Informational and kept separate on purpose: it moves no value, and
+grading it alongside three findings that could hand a holding to the wrong
+address would misrepresent all four. It is here because it was found by the
+property tests written *after* those fixes, on their first run — which is the
+part worth recording. See [SWEEP-REPORT.md §4](../SWEEP-REPORT.md).
 
 ## Raised by the contract audit
 

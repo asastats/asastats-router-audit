@@ -33,7 +33,12 @@ needing an explicit tick rather than the path that needs none.
 All three are fixed. The fee bound landed twice — in the widget for close-out
 groups, and as a fourth assertion in the contract's own group-hygiene guard for
 every routed group — and that second half is **source-only until the contract
-is redeployed**. See [SWEEP-REPORT.md](SWEEP-REPORT.md).
+is redeployed**.
+
+Those fixes were then followed by 35 property tests, because every one of them
+had been certified by example tests its own author wrote — the exact pattern
+that produced the first finding. They turned up a fourth defect on their first
+run, in both languages at once. See [SWEEP-REPORT.md](SWEEP-REPORT.md).
 
 **The mainnet deployment is restricted to its admin, and this audit does not
 clear it to be otherwise.** Every audit of this contract — this one included —
@@ -49,7 +54,7 @@ Every factual claim in the report is a command:
 ```bash
 cd verification
 ROUTER=/path/to/router ./verify.sh          # the contract — 27 checks
-ROUTER=/path/to/router ./verify-sweep.sh    # the dust sweep — 29 checks
+ROUTER=/path/to/router ./verify-sweep.sh    # the dust sweep — 33 checks
 ```
 
 `verify.sh` needs no node, no credentials and no network. `verify-sweep.sh`

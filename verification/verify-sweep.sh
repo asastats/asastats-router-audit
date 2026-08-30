@@ -321,6 +321,64 @@ else
 fi
 
 echo
+echo "S5 — does a malformed payload degrade rather than raise?"
+echo "-------------------------------------------------------------------------"
+
+check "the evaluation readers share one shape-tolerant reader" "2" \
+    "$(grep -c 'for asset, item in _evaluation_items(evaluation):' "${SWEEP}")"
+check "the browser checks share one too" "2" \
+    "$(grep -c 'planLines(described).forEach' "${WIDGET}")"
+
+cat > "${WORK}/shapes.py" <<'SHAPES'
+import sys
+
+sys.path.insert(0, sys.argv[1])
+from router.sweep import priced_by_evaluation, values_by_evaluation
+
+# Anything at all, including the shapes that used to raise: a payload that is
+# not a mapping, an `asaitems` that is not iterable, an `asset` that is not a
+# mapping.
+for payload in (None, True, 7, "text", [], {}, {"asaitems": True},
+                {"asaitems": 5}, {"asaitems": [None]}, {"asaitems": [{}]},
+                {"asaitems": [{"asset": True}]},
+                {"asaitems": [{"asset": {"id": "x"}}]}):
+    try:
+        priced_by_evaluation(payload)
+        values_by_evaluation(payload)
+    except Exception as error:
+        print(f"raises on {payload!r}: {error}")
+        break
+else:
+    print("degrades")
+SHAPES
+
+check "neither python reader raises on any shape" "degrades" \
+    "$("${PYTHON}" "${WORK}/shapes.py" "${ROUTER}" 2>/dev/null || echo unknown)"
+
+if [ -n "${HAVE_JS}" ]; then
+    cat > "${WORK}/shapes.js" <<JS
+global.atob = (b) => Buffer.from(b, "base64").toString("binary");
+const sweep = require("${WIDGET}");
+const data = require("${WORK}/groups.json");
+const group = data.cases.honest.txns;
+(async () => {
+  for (const plan of [undefined, null, [], " ", "x", 7, true, {a: 1}, [null], [7]]) {
+    try {
+      sweep.closeOutProblems(group, data.owner, plan);
+      await sweep.forfeitTargetProblems(group, plan, {});
+    } catch (error) {
+      console.log("raises: " + error.message);
+      return;
+    }
+  }
+  console.log("degrades");
+})();
+JS
+    check "neither browser check raises on any shape" "degrades" \
+        "$(node "${WORK}/shapes.js" 2>/dev/null || echo unknown)"
+fi
+
+echo
 echo "context"
 echo "-------------------------------------------------------------------------"
 check "the asset cache is consulted before the node by default" "1" \

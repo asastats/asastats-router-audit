@@ -19,10 +19,10 @@ are closed and `S3` is closed for close-out groups, so each check is now the
 regression test for one of them.
 
 ```
-router:   5a25c3d + contract fee bound   (audited at 8d130d6)
+router:   cc9a4ff   (audited at 8d130d6)
 engine:   9320ae2   (audited at 1b2c588)
 frontend: cf958b1   (audited at 2904746)
-widgets:  0be86c7   (audited at 4b4eec8)
+widgets:  d1365dc   (audited at 4b4eec8)
 date:     2026-08-30
 network:  mainnet, account OGRUNXPS…2CEN2M (31.688265 ALGO, 3 empty holdings)
 ```
@@ -66,6 +66,13 @@ S4 — does a forfeit check the second opinion?
   PASS  both sources calling it dust: still forfeited            forfeit:swept
   PASS  evaluation with no opinion: still forfeited              forfeit:swept
 
+S5 — does a malformed payload degrade rather than raise?
+-------------------------------------------------------------------------
+  PASS  the evaluation readers share one shape-tolerant reader   2
+  PASS  the browser checks share one too                         2
+  PASS  neither python reader raises on any shape                degrades
+  PASS  neither browser check raises on any shape                degrades
+
 context
 -------------------------------------------------------------------------
   PASS  the asset cache is consulted before the node by default  1
@@ -73,7 +80,7 @@ context
   PASS  unpriced is the only disposition that starts off         1
 
 -------------------------------------------------------------------------
-  29 passed, 0 failed, 0 skipped
+  33 passed, 0 failed, 0 skipped
 ```
 
 ## Reading the S2 block
@@ -116,10 +123,14 @@ signature. Neither moves value, and both are noted rather than filed.
 Before the fixes, and after:
 
 ```
-router/tests/test_sweep.py         123 collected  ->  139 passed
+router/tests/test_sweep.py         123 collected  ->  140 passed
 engine/core/tests/test_sweep.py     62 collected  ->   64 passed
-dustsweep jest                     121 passed     ->  137 passed
+dustsweep jest                     121 passed     ->  153 passed
                                    100% line and branch, both times
+
+property tests added afterwards, which found S5:
+  router/tests/test_fuzz_sweep.py                      20 passed
+  dustsweep.property.test.js                           15 passed
 ```
 
 All three findings survived the first column. That is the point of

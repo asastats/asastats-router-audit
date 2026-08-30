@@ -58,6 +58,39 @@ The mitigation is not more careful prose. It is making claims executable, so
 that the difference between a checked claim and an invented one is a script
 exiting non-zero.
 
+## The limit of reading, and what got past it
+
+Everything above is about *claims*. There is a second failure that executable
+claims do not touch, and the dust sweep audit ran into it: an examiner reading
+code finds the cases it occurs to them to look for, and so does an examiner
+writing tests. Both are bounded by the same imagination.
+
+`S1` is the clean example. Its example tests were thorough — five parametrised
+cases for a payload that could not be read — and every one of them stayed
+inside the type the author had in mind. Nobody wrote the case where the payload
+is not a dict at all, because nobody thought of it, and that is exactly the
+case [`S5`](../findings/S5-malformed-evaluation-raises.md) turned out to be.
+
+**Property tests do not have that failure mode, because nobody chooses the
+inputs.** 35 of them were added to the sweep after `S2`–`S4` were fixed —
+hypothesis on the planner, fast-check on the browser control — each stating a
+refusal rather than an example. They found `S5` on their first run, in both
+languages at once.
+
+That is also why they were added at all. Every fix in that audit was certified
+by example tests its own author wrote in the same commit, which is precisely
+the pattern that produced `S1` in the first place. Passing tests are evidence
+the author believed the code was right; a review is supposed to check that
+belief, and cannot if it shares it.
+
+**And the properties were mutation-tested**, because a property that catches
+nothing passes exactly like one that catches everything. Six of the seven rules
+in the browser control were caught when disabled. The seventh was not, and
+reading why turned out to be worth more than the six: a payment is refused by a
+*different* rule than the one that names it, so the type check is defence in
+depth rather than the load-bearing thing it looks like. That is a fact about
+the control nobody had written down, and no amount of reading it had surfaced.
+
 ## Scope
 
 **In:** `contracts/router_app.py` and the off-chain planning code that decides
