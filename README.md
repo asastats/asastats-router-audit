@@ -43,9 +43,10 @@ run, in both languages at once. See [SWEEP-REPORT.md](SWEEP-REPORT.md).
 **The mainnet deployment is restricted to its admin, and this audit does not
 clear it to be otherwise.** What it does do is remove the reason that
 restriction was load-bearing twice over: while it is set, the admin is the only
-caller *and* the only stop button, because the contract had none. It now has
-`set_paused` and a bounded `set_max_input` — see
-[what has to exist first](contracts/going-unrestricted.md).
+caller *and* the only stop button, because the contract had none. It now has `set_paused` — see
+[what has to exist first](contracts/going-unrestricted.md), which also records
+the input cap that was built for the same purpose and removed, because a bound
+in base units cannot state a value.
 
 Every audit of this contract — this one included — was produced by an AI
 system, and none has been reviewed by a human with Algorand experience. Two
@@ -61,7 +62,7 @@ Every factual claim in the report is a command:
 ```bash
 cd verification
 ROUTER=/path/to/router ./verify.sh          # the contract — 27 checks
-ROUTER=/path/to/router ./verify-sweep.sh    # the dust sweep — 45 checks
+ROUTER=/path/to/router ./verify-sweep.sh    # the dust sweep — 42 checks
 ```
 
 `verify.sh` needs no node, no credentials and no network. `verify-sweep.sh`

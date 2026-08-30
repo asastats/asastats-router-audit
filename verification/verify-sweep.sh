@@ -332,20 +332,19 @@ check "the pause is admin-only" "1" \
     "$(grep -c 'only the admin may pause routing' "${CONTRACT}")"
 check "close_holding is NOT paused, so recovery survives it" "0" \
     "$(sed -n '/def close_holding/,/def route/p' "${CONTRACT}" | grep -c 'self.paused')"
-check "one route's input is bounded" "1" \
-    "$(grep -c 'def set_max_input' "${CONTRACT}")"
-check "the cap covers both the ALGO and the ASA branch" "2" \
-    "$(sed -n '/def _input_amount/,/def _assert_input_spent/p' "${CONTRACT}" | grep -c 'self.max_input, "input above the cap"')"
-check "a zero cap is refused rather than meaning unlimited" "1" \
-    "$(grep -c 'the input cap cannot be zero' "${CONTRACT}")"
-check "deployments start at 50,000 ALGO" "1" \
-    "$(grep -c 'INITIAL_MAX_INPUT = 50_000_000_000' "${CONTRACT}")"
+# There is no input cap, and that is a decision rather than an omission: a
+# bound in the input asset's base units cannot state a value -- the same number
+# is 50,000 ALGO and 50,000 USDC -- and putting it in value terms needs a price
+# oracle inside the contract. Asserted so the removal does not quietly come
+# back as something a reader would have to be warned about.
+check "no input cap, which could not have meant one thing" "0" \
+    "$(grep -c 'max_input' "${CONTRACT}")"
 
-# The two new fields move the global schema from (2, 5) to (4, 5). Three
+# `paused` moves the global schema from (2, 5) to (3, 5). Three
 # LocalNet fixtures used to pin the old pair by hand, and getting it wrong is
 # an opaque HTTP 400 from the create rather than anything that names state --
 # so nothing should restate it now.
-check "the contract carries four global uints" "4" \
+check "the contract carries three global uints" "3" \
     "$(sed -n '/def __init__/,/def set_paused/p' "${CONTRACT}" | grep -c 'UInt64(')"
 check "the test harness takes the schema from the compiler" "1" \
     "$(grep -c 'CompiledContract = namedtuple' "${ROUTER}/tests/localnet.py")"
@@ -373,8 +372,8 @@ for body in parts[1:]:
 print(f"{len(names)}/{len(names) - len(unguarded)}/{','.join(sorted(unguarded))}")
 GUARDS
 
-check "16 entry points, 14 walking the group, 2 inert" \
-    "16/14/pool_budget,verify_discount" \
+check "15 entry points, 13 walking the group, 2 inert" \
+    "15/13/pool_budget,verify_discount" \
     "$("${PYTHON}" "${WORK}/guards.py" "${CONTRACT}" 2>/dev/null || echo unknown)"
 
 echo

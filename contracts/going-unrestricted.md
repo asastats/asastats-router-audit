@@ -32,7 +32,8 @@ control standing between an unaudited contract and the public is the thing that
 
 **A third AI opinion on this question is worth very little**, including this
 one. What follows is therefore not an argument that the contract is ready. It
-is a description of two mechanisms that hold whether or not it is.
+is a description of one mechanism that holds whether or not it is, and of a
+second that was built for the same purpose and removed because it could not.
 
 ## The gap nobody had named
 
@@ -47,10 +48,10 @@ Going from *one caller* to *everybody*, and from *a stop button* to *none*, in
 a single redeploy is the part that was hard to justify — and it was invisible,
 because while the restriction is on you never notice it is doing two jobs.
 
-## The two mechanisms
+## The mechanism
 
-Both are in the contract now. Neither depends on any audit being correct, which
-is the entire reason to prefer them to more analysis.
+In the contract now, and it does not depend on any audit being correct — which
+is the entire reason to prefer it to more analysis.
 
 ### `set_paused`
 
@@ -67,39 +68,39 @@ Nothing is custodied across the boundary: a route is atomic, the contract holds
 a caller's input only within the group, and `_pay_out` pays `Txn.sender` before
 it ends. Pausing stops the next route and cannot strand one in flight.
 
-### `set_max_input`
+### There is no input cap, and that is a decision
 
-Bounds what one route may take in. Asserted in `_input_amount`, which is where
-both entry points already learn what the caller paid, and on both its branches
-— the ALGO one and the ASA one.
+One was built and then removed, which is worth recording because the reasoning
+generalises.
 
-Starts at **50,000 ALGO**, about US$4,000 when it was chosen. Raising it is an
-administrative act with a transaction behind it; zero is refused rather than
-meaning "unlimited", because a sentinel that opens the contract wide is the
-wrong thing to reach by accident.
+The intent was a rollout limiter: bound what a single route could lose, so the
+first weeks of unrestricted traffic could not cost more than a number, whatever
+turned out to be wrong. That is a good idea. The implementation bounded
+`_input_amount`, which is denominated in **the input asset's base units** — so
+`50_000_000_000` was 50,000 ALGO and equally 50,000 USDC, an order of magnitude
+apart in worth, and something else again for every other decimals value.
 
-**It is a rollout limiter, not a security boundary**, and the distinction
-matters. Nothing here is safer at 50,000 ALGO than at 500,000. What the cap
-buys is that the first weeks of unrestricted traffic cannot lose more than it,
-whatever turns out to be wrong — which is worth having precisely because the
-evidence that nothing is wrong is six AI audits, two of which were confidently
-mistaken about this very question.
+**A limit that cannot state the quantity it is limiting is not a limit.** It is
+a number that happens to refuse some trades and not others, on a basis nobody
+reading it would predict. Expressing it in value terms is the only way it means
+what it was meant to mean, and that requires a price oracle inside the
+contract — a larger and worse thing than the bound it would calibrate.
 
-**One honest limitation.** The cap counts base units, so `50_000_000_000` is
-50,000 ALGO and also 50,000 USDC, an order of magnitude apart in worth. A
-stablecoin route is therefore capped looser in dollars than an ALGO one.
-Pricing per asset would put an oracle inside the contract, which is a larger
-and worse thing than the limit it would calibrate; it is set against ALGO
-deliberately, on the understanding that the number is reviewed while it is low.
+So it went, rather than staying as a feature that needed a warning attached.
+`verify-sweep.sh` asserts its absence, so it cannot come back quietly.
+
+What survives is the half that never depended on pricing anything.
+`set_paused` bounds *duration* rather than size: it needs no notion of value,
+and it is the mechanism that actually replaces what `RESTRICT_TO_ADMIN` was
+silently doing.
 
 ## A suggested sequence
 
-The redeploy that lifts the restriction has three things to carry: the group
-fee bound from [`S3`](../findings/S3-unbounded-fee.md), the pause, and the cap.
+The redeploy that lifts the restriction has two things to carry: the group fee
+bound from [`S3`](../findings/S3-unbounded-fee.md), and the pause.
 
-Deploying **with the restriction still on** first, and exercising the two new
-admin methods against your own account on mainnet, costs one extra deployment
-and converts "we believe the lever works" into "we have pulled it". A stop
+Deploying **with the restriction still on** first, and exercising the pause
+against your own account on mainnet, costs one extra deployment and converts "we believe the lever works" into "we have pulled it". A stop
 button nobody has pressed is a claim, not a control — which is the whole
 argument of this repository, applied to its own recommendation.
 
@@ -108,5 +109,5 @@ argument of this repository, applied to its own recommendation.
 A human with Algorand experience reading the contract.
 [DISCLAIMER.md](../DISCLAIMER.md) records that none ever has. That gap is
 tolerable while the admin is the only caller and becomes the whole question the
-moment they are not. The pause and the cap bound what being wrong costs; they
-do not make being wrong less likely.
+moment they are not. The pause bounds how long being wrong lasts; it does not
+make being wrong less likely.

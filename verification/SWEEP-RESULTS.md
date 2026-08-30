@@ -19,7 +19,7 @@ are closed and `S3` is closed for close-out groups, so each check is now the
 regression test for one of them.
 
 ```
-router:   213f677   (audited at 8d130d6)
+router:   848a3a3   (audited at 8d130d6)
 engine:   9320ae2   (audited at 1b2c588)
 frontend: cf958b1   (audited at 2904746)
 widgets:  d1365dc   (audited at 4b4eec8)
@@ -72,14 +72,11 @@ Before RESTRICT_TO_ADMIN comes off — the two levers that replace it
   PASS  both route entry points honour the pause                 2
   PASS  the pause is admin-only                                  1
   PASS  close_holding is NOT paused, so recovery survives it     0
-  PASS  one route's input is bounded                             1
-  PASS  the cap covers both the ALGO and the ASA branch          2
-  PASS  a zero cap is refused rather than meaning unlimited      1
-  PASS  deployments start at 50,000 ALGO                         1
-  PASS  the contract carries four global uints                   4
+  PASS  no input cap, which could not have meant one thing       0
+  PASS  the contract carries three global uints                  3
   PASS  the test harness takes the schema from the compiler      1
   PASS  no fixture pins a schema by hand any more                0
-  PASS  16 entry points, 14 walking the group, 2 inert           16/14/pool_budget,verify_discount
+  PASS  15 entry points, 13 walking the group, 2 inert           15/13/pool_budget,verify_discount
 
 S5 — does a malformed payload degrade rather than raise?
 -------------------------------------------------------------------------
@@ -95,7 +92,7 @@ context
   PASS  unpriced is the only disposition that starts off         1
 
 -------------------------------------------------------------------------
-  45 passed, 0 failed, 0 skipped
+  42 passed, 0 failed, 0 skipped
 ```
 
 ## Reading the S2 block
