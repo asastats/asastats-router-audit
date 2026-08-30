@@ -10,8 +10,9 @@ own. For the contract, read [REPORT.md](REPORT.md).
   `router/sweep.py`, `router/selection.py`, `engine/core/sweep.py`, and the
   wallet bridge's `signAndSend`
 - **Verification:** [verification/verify-sweep.sh](verification/verify-sweep.sh)
-  — 26 checks, all passing, none skipped
-- **Findings:** three, all Medium. Two fixed, one partly fixed.
+  — 29 checks, all passing, none skipped
+- **Findings:** three, all Medium, all fixed. One of the three fixes is
+  source-only until the contract is redeployed.
 
 ---
 
@@ -34,7 +35,7 @@ read the rest with the same intent.
 | id | severity | title | status |
 |:---:|:---:|---|---|
 | [`S2`](findings/S2-forfeit-target-self-certifying.md) | Medium | The browser whitelist does not bind the forfeit destination | **Fixed** |
-| [`S3`](findings/S3-unbounded-fee.md) | Medium | Nothing bounds the fee on a transaction the sweep asks a user to sign | **Partly fixed** |
+| [`S3`](findings/S3-unbounded-fee.md) | Medium | Nothing bounds the fee on a transaction the sweep asks a user to sign | **Fixed** (contract half undeployed) |
 | [`S4`](findings/S4-forfeit-lacks-evaluation-veto.md) | Medium | The evaluation veto guards the opt-in path but not the automatic one | **Fixed** |
 
 All three share a precondition worth stating plainly: **none was reachable by
@@ -48,13 +49,12 @@ They are rated Medium rather than Low because each defeats a control that was
 built specifically to hold under those conditions, and because the value each
 exposes is unbounded.
 
-**What is still open.** `S3`'s fee bound covers the sweep's close-out groups
-and not its conversion groups: a conversion carries a router application call
-and is delegated to the contract, whose `_assert_group_is_clean` checks three
-fields and no fee. Closing it means either a fourth assertion in a subroutine
-whose opcode budget is already tight — and a contract deployment — or teaching
-the widget a group structure it deliberately does not model. See
-[`S3` §6](findings/S3-unbounded-fee.md).
+**What is not deployed.** `S3` is closed twice over — a cap in the widget for
+close-out groups, and a fourth assertion in `_assert_group_is_clean` that
+totals the fee across any routed group. The second is source-only: mainnet
+`3688554446` and testnet `770123816` were compiled before it existed, so
+every group they execute is still bounded by nothing but the signer's balance
+until a deployment happens. See [`S3` §7](findings/S3-unbounded-fee.md).
 
 ### `S2` — the whitelist restates the engine where it matters most
 
@@ -98,9 +98,12 @@ fees total the account's entire spendable balance (28.27 ALGO) is accepted.
 The interface would not move. `summary.fees` is computed, sent to the browser,
 and never rendered; the *You recover* figure is gross of fees.
 
-**Partly fixed.** Close-out fees are now capped at a tenth of what a close-out
-returns and the fee is shown beside what the sweep recovers. Conversion groups
-are still unbounded.
+**Fixed**, in both places it needed to be. Close-out fees are capped at a
+tenth of what a close-out returns and the fee is shown beside what the sweep
+recovers; `_assert_group_is_clean` totals the fee across any routed group and
+refuses a total above `MAX_GROUP_FEE`, sized from the dearest route
+`route_fee` can return rather than picked. The contract half awaits a
+deployment.
 
 ### `S4` — the veto is on the branch that needs it less
 

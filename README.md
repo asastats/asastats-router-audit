@@ -30,9 +30,10 @@ and mainnet would accept a close-out group whose fees consume the account's
 entire spendable balance; and the value veto added for `S1` guarded the path
 needing an explicit tick rather than the path that needs none.
 
-Two are fixed and one is fixed for close-out groups but **still open for
-conversion groups**, where bounding the fee needs either a contract change or a
-second group model in the browser. See [SWEEP-REPORT.md](SWEEP-REPORT.md).
+All three are fixed. The fee bound landed twice — in the widget for close-out
+groups, and as a fourth assertion in the contract's own group-hygiene guard for
+every routed group — and that second half is **source-only until the contract
+is redeployed**. See [SWEEP-REPORT.md](SWEEP-REPORT.md).
 
 **The mainnet deployment is restricted to its admin, and this audit does not
 clear it to be otherwise.** Every audit of this contract — this one included —
@@ -48,7 +49,7 @@ Every factual claim in the report is a command:
 ```bash
 cd verification
 ROUTER=/path/to/router ./verify.sh          # the contract — 27 checks
-ROUTER=/path/to/router ./verify-sweep.sh    # the dust sweep — 26 checks
+ROUTER=/path/to/router ./verify-sweep.sh    # the dust sweep — 29 checks
 ```
 
 `verify.sh` needs no node, no credentials and no network. `verify-sweep.sh`

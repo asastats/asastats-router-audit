@@ -186,6 +186,41 @@ check "summary.recoverable is net of fees" "1" \
     "$(grep -c '"recoverable": (closes + conversions) \* HOLDING_MINIMUM_BALANCE - fees,' "${SWEEP}")"
 check "the contract's hygiene guard still checks its three fields" "3" \
     "$(sed -n '/def _assert_group_is_clean/,/def _signed_floor/p' "${CONTRACT}" | grep -c 'Global.zero_address$')"
+check "the hygiene guard now totals the group's fee" "1" \
+    "$(sed -n '/def _assert_group_is_clean/,/def _signed_floor/p' "${CONTRACT}" | grep -c 'paid += transaction.fee')"
+check "...and refuses a group that overpays" "1" \
+    "$(sed -n '/def _assert_group_is_clean/,/def _signed_floor/p' "${CONTRACT}" | grep -c 'assert paid <= MAX_GROUP_FEE')"
+
+# The ceiling has to clear what a legitimate route can legitimately need, or
+# the contract becomes the thing that breaks every swap through it.
+cat > "${WORK}/ceiling.py" <<'CEILING'
+import sys
+from collections import namedtuple
+from itertools import product
+
+sys.path.insert(0, sys.argv[1])
+sys.path.insert(0, sys.argv[1] + "/contracts")
+from router.contract import route_fee, Deployment, MAX_STAMM_OPUPS
+from router_app import MAX_GROUP_FEE
+
+Leg = namedtuple("Leg", ["provider", "opups", "handle"], defaults=(None,))
+Q = namedtuple("_Route", ["handle"])
+dear = Deployment(router_app_id=None, tinyman_validator=1, stamm_budget=2,
+                  stamm_opup=3, stamm_opup_count=MAX_STAMM_OPUPS)
+worst = max(
+    route_fee(Q(tuple(Leg(p, 0) for p in combo)), 1,
+              tuple(range(1, n)) if n > 1 else 0, 2,
+              deployment=dear, held=frozenset())
+    for n in (1, 2, 3)
+    for combo in product(["tinyman2", "pact", "algofi", "stamm"], repeat=n)
+)
+# Seven route calls is the most a sixteen-transaction group can hold, each
+# needing a funding transaction beside it.
+print("clears" if MAX_GROUP_FEE > worst * 7 else "too tight")
+CEILING
+
+check "the ceiling clears the dearest route route_fee can return" "clears" \
+    "$("${PYTHON}" "${WORK}/ceiling.py" "${ROUTER}" 2>/dev/null || echo unknown)"
 
 echo
 echo "S3 — what the chain would accept, unchanged by any fix (needs a node)"

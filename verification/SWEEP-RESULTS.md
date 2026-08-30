@@ -19,9 +19,9 @@ are closed and `S3` is closed for close-out groups, so each check is now the
 regression test for one of them.
 
 ```
-router:   2aad22b   (audited at 8d130d6)
+router:   5a25c3d + contract fee bound   (audited at 8d130d6)
 engine:   9320ae2   (audited at 1b2c588)
-frontend: 199b9a0   (audited at 2904746)
+frontend: cf958b1   (audited at 2904746)
 widgets:  0be86c7   (audited at 4b4eec8)
 date:     2026-08-30
 network:  mainnet, account OGRUNXPS…2CEN2M (31.688265 ALGO, 3 empty holdings)
@@ -48,6 +48,9 @@ S3 — is the fee bounded?
   PASS  summaryFigures renders the fee                           1
   PASS  summary.recoverable is net of fees                       1
   PASS  the contract's hygiene guard still checks its three fields 3
+  PASS  the hygiene guard now totals the group's fee             1
+  PASS  ...and refuses a group that overpays                     1
+  PASS  the ceiling clears the dearest route route_fee can return clears
 
 S3 — what the chain would accept, unchanged by any fix (needs a node)
 -------------------------------------------------------------------------
@@ -70,7 +73,7 @@ context
   PASS  unpriced is the only disposition that starts off         1
 
 -------------------------------------------------------------------------
-  26 passed, 0 failed, 0 skipped
+  29 passed, 0 failed, 0 skipped
 ```
 
 ## Reading the S2 block
@@ -141,3 +144,12 @@ all. `assetCreator` now lives in `swapBridge.ts` and the wiring stays behind.
 
 Recorded here because it is the same failure the audit is about, one layer out:
 a number that reads as complete, over a scope nobody restated.
+
+## The contract bound is checked here but not deployed
+
+The three `S3` contract checks read `contracts/router_app.py`, so they pass
+against the repository. Mainnet `3688554446` and testnet `770123816` were
+compiled before the guard existed and are unaffected by it. Nothing in this
+script reads the deployed bytecode, so a green run says the source is right and
+says nothing about what is live -- which is the same distinction audit v5 lost
+when it reported a deployment property it had not checked.

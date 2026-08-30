@@ -5,8 +5,9 @@
 - **Component:** off-chain — `dustsweep.js` `closeOutProblems`; also
   `contracts/router_app.py` `_assert_group_is_clean` on the conversion path
 - **Origin:** this audit
-- **Status:** **Partly fixed** — close-out path closed by `0be86c7` (widget)
-  and `2aad22b` (planner). **The conversion path remains unbounded**; see §6.
+- **Status:** **Fixed** — close-outs by `0be86c7` (widget) and `2aad22b`
+  (planner); every routed group by the contract's own guard. **The contract
+  half is not deployed**; see §7.
 
 ---
 
@@ -115,12 +116,11 @@ conversion path nothing inspects the group in the browser at all.
    conversion path and every other router group. Weigh against its opcode
    budget, which the docstrings show is already tight.
 
-## 6. As delivered, and what is still open
+## 6. As delivered
 
-**Closed for close-outs.** `closeOutProblems` now refuses any transaction
-whose fee exceeds `MAX_CLOSE_OUT_FEE`, and the widget shows *Network fees*
-beside *You recover*, with `summary.recoverable` netted so it agrees with
-`next_action`'s `recovers`.
+**Close-outs.** `closeOutProblems` refuses any transaction whose fee exceeds
+`MAX_CLOSE_OUT_FEE`, and the widget shows *Network fees* beside *You recover*,
+with `summary.recoverable` netted so it agrees with `next_action`'s `recovers`.
 
 The cap is written as `HOLDING_MINIMUM_BALANCE / 10` rather than as a multiple
 of the 1,000 microALGO protocol minimum. Same number; different property. The
@@ -132,24 +132,60 @@ fraction of what a close-out returns makes the group rule unnecessary instead
 of merely redundant, and a test asserts the relationship so that raising the
 constant past the point where it holds fails loudly.
 
-**Still open for conversions.** Recommendation 3 was not taken, and
-`signAction` still inspects only the close-out path. A conversion group is
-built by the engine, carries a router application call, and is signed by the
-user — and neither the widget nor `_assert_group_is_clean` bounds its fees. The
-same drain is therefore reachable through a conversion.
+**Every routed group**, by recommendation 3: a fourth assertion in
+`_assert_group_is_clean`, which now totals the fee across the group and refuses
+a total above `MAX_GROUP_FEE`.
 
-It is left open rather than closed badly because the two candidate fixes both
-need judgement this finding cannot supply on its own:
+Totalled rather than checked per transaction, for two reasons. The total is
+what a signer actually loses. And it is the bound that survives the builder
+redistributing fees, which it already does — `router.build` sends the quote
+authorisation with a zero fee and pools its minimum onto the route call that
+carries the floor, so a per-transaction rule would have to be loose enough for
+the dearest single call and would then permit sixteen of them.
 
-- **A fourth assertion in `_assert_group_is_clean`** would cover the conversion
-  path and every other router group at once, but it costs opcode budget in a
-  subroutine whose own docstring records a five-way split being refused at
-  1,877 — and it needs a contract deployment.
-- **Inspecting the conversion group in the browser** duplicates for a group
-  whose structure the widget deliberately does not model, since the contract
-  is what validates it.
+### Sizing it
 
-A conversion is also one holding rather than sixteen, and the router call
-gives the contract a hook a close-out group does not have, so the shape is
-better than the close-out case was. That is a reason to sequence it, not a
-reason to leave it.
+The ceiling is arithmetic, not judgement, because this contract is immutable
+once deployed and a bound that refuses a legitimate route breaks every swap
+through it. `router.contract.route_fee` returns `MINIMUM_TRANSACTION_FEE *
+slots`; maximised over every one-, two- and three-leg combination of the four
+providers, at `MAX_STAMM_OPUPS`, holding nothing:
+
+```
+worst legitimate route_fee: 44000 microALGO (0.044 ALGO)
+  from legs: ('stamm', 'stamm', 'stamm')
+```
+
+A route call needs a funding transaction beside it, so at most seven fit in a
+sixteen-transaction group: about 324,000 with the other transactions counted,
+and 704,000 even on the absurd assumption that all sixteen carry a maximal
+route fee. `MAX_GROUP_FEE` is 1,000,000.
+
+That is deliberately loose, and the trade is stated rather than hidden: it
+turns "as much as the signer has" — 28.27 ALGO on the account this audit
+measured, and unbounded in general, since it scales with the victim's balance —
+into a fixed ceiling that does not grow with what it protects. A tighter bound
+is available to anyone who wants to do the arithmetic; `verify-sweep.sh`
+recomputes the worst legitimate route on every run and fails if the ceiling
+stops clearing it.
+
+### The opcode budget, which was the reason to hesitate
+
+`_assert_group_is_clean` already walks the group, so the addition is one
+`+=` per transaction and one comparison at the end — cheaper than the
+per-transaction alternative. Compiled: 4,681 → 4,699 lines of TEAL.
+
+`TestSplitWidthIsBoundedByTheGroupNotTheBudget` is the test whose docstring
+warned that "another group scan on the route path would eat into it, and the
+symptom would be a wide split failing on budget, which looks nothing like the
+change that caused it" — the first `_signed_floor` was refused at 1,877 that
+way. It executes five-way and four-way splits against LocalNet, and both still
+pass. 111 LocalNet tests, 967 in the router suite.
+
+## 7. What is not done
+
+**The contract half is source-only.** Mainnet `3688554446` and testnet
+`770123816` were compiled before this guard existed, so every group they
+execute is still bounded only by the signer's balance. Closing `S3` on chain
+means a deployment, and until one happens this finding is fixed in the
+repository and open in production.

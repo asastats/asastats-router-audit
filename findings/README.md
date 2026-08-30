@@ -5,17 +5,20 @@ the contract audit, and three by the dust sweep audit.
 
 ## Open
 
-**None in the contract.** One partly open off-chain: the fee bound from
-[`S3`](S3-unbounded-fee.md) covers the sweep's close-out groups and **not its
-conversion groups**, where neither the widget nor the contract's group-hygiene
-guard bounds a fee. See [`S3` §6](S3-unbounded-fee.md).
+**None.** All three dust sweep findings are closed.
+
+One caveat that is not a finding but should not be discovered later: `S3`'s
+contract-side bound is **source-only**. Mainnet `3688554446` and testnet
+`770123816` were compiled before `_assert_group_is_clean` learned to total the
+group's fee, so a routed group they execute is still bounded by nothing but the
+signer's balance until a deployment happens. See [`S3` §7](S3-unbounded-fee.md).
 
 ## Raised by the dust sweep audit
 
 | id | severity | title | status |
 |:---:|:---:|---|---|
 | [`S2`](S2-forfeit-target-self-certifying.md) | Medium | The browser whitelist does not bind the forfeit destination | **Fixed** `0be86c7` / `199b9a0` |
-| [`S3`](S3-unbounded-fee.md) | Medium | Nothing bounds the fee on a transaction the sweep asks a user to sign | **Partly fixed** `0be86c7` / `2aad22b` |
+| [`S3`](S3-unbounded-fee.md) | Medium | Nothing bounds the fee on a transaction the sweep asks a user to sign | **Fixed** `0be86c7` / `2aad22b` / contract |
 | [`S4`](S4-forfeit-lacks-evaluation-veto.md) | Medium | The evaluation veto guards the opt-in path but not the automatic one | **Fixed** `2aad22b` / `9320ae2` |
 
 None was reachable by an unprivileged remote attacker: `S2` and `S3` needed the
