@@ -4,21 +4,32 @@ A security audit of the [ASA Stats](https://asastats.com) smart router: an
 Algorand application that executes multi-hop swaps across Tinyman v2, Pact,
 STAMM and AlgoFi inside a single atomic group.
 
-**[Read the report →](REPORT.md)**  ·  **[What this is worth →](DISCLAIMER.md)**
+**[Read the contract audit →](REPORT.md)**  ·
+**[Read the dust sweep audit →](SWEEP-REPORT.md)**  ·
+**[What this is worth →](DISCLAIMER.md)**
 
 ---
 
 ## The short version
 
-No critical or high-severity vulnerability was found in the contract. All 23
+**The contract.** No critical or high-severity vulnerability was found. All 23
 findings from the five previous audits are closed, and every mitigation was
 re-derived from the source rather than taken on trust.
 
-One real defect was found, in the off-chain sweep planner rather than the
-contract: an unpriced holding could be given away to its creator with no test
-of what it was worth. Live data showed an asset valued at 245.88 ALGO on the
-user's own portfolio page sitting one checkbox from that path. It is
-[fixed](findings/S1-unpriced-forfeit.md).
+One real defect was found in the off-chain sweep planner: an unpriced holding
+could be given away to its creator with no test of what it was worth. Live data
+showed an asset valued at 245.88 ALGO on the user's own portfolio page sitting
+one checkbox from that path. It is [fixed](findings/S1-unpriced-forfeit.md).
+
+**The dust sweep.** That last finding was reason enough to audit the sweep
+properly, since it is the only feature in the product that gives a user's
+assets away. Three further defects, all open, all off-chain — the browser
+control that inspects what a user is asked to sign takes its reference values
+for the most damaging field from the same response it is checking; nothing
+anywhere bounds the fee, and mainnet would accept a close-out group whose fees
+consume the account's entire spendable balance; and the value veto added for
+`S1` guards the path needing an explicit tick rather than the path that needs
+none. See [SWEEP-REPORT.md](SWEEP-REPORT.md).
 
 **The mainnet deployment is restricted to its admin, and this audit does not
 clear it to be otherwise.** Every audit of this contract — this one included —
@@ -33,22 +44,28 @@ Every factual claim in the report is a command:
 
 ```bash
 cd verification
-ROUTER=/path/to/router ./verify.sh
+ROUTER=/path/to/router ./verify.sh          # the contract — 27 checks
+ROUTER=/path/to/router ./verify-sweep.sh    # the dust sweep — 23 checks
 ```
 
-27 checks. No node, no credentials, no network. The recorded output is in
-[verification/RESULTS.md](verification/RESULTS.md). If something in the report
-is not covered there, it is not verified — and [REPORT.md §5](REPORT.md) says
-what was deliberately left unchecked.
+`verify.sh` needs no node, no credentials and no network. `verify-sweep.sh`
+needs node.js and, for four of its checks, a mainnet algod — it reports those
+as `SKIP` rather than passing them silently when one is not configured. Neither
+script submits anything; the chain cases use `simulate` with no key.
+
+The recorded output is in [verification/RESULTS.md](verification/RESULTS.md).
+If something in either report is not covered there, it is not verified — and
+each report's final sections say what was deliberately left unchecked.
 
 ## Layout
 
 | path | what is in it |
 |---|---|
-| [REPORT.md](REPORT.md) | the audit |
+| [REPORT.md](REPORT.md) | the contract audit |
+| [SWEEP-REPORT.md](SWEEP-REPORT.md) | the dust sweep audit — off-chain, separate scope |
 | [DISCLAIMER.md](DISCLAIMER.md) | how this was produced and what that costs |
 | [findings/](findings/) | one file per finding |
-| [verification/](verification/) | the script behind every claim, and its recorded output |
+| [verification/](verification/) | the scripts behind every claim, and their recorded output |
 | [contracts/](contracts/) | access-control matrix and architecture notes |
 | [tools/](tools/) | Tealer static analysis |
 | [history/](history/) | audits v1–v5 as issued, and what each got wrong |

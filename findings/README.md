@@ -1,13 +1,25 @@
 # Findings
 
-24 in total across six audits: 23 raised by v1–v5 and closed, and one raised
-here.
+27 in total across seven audits: 23 raised by v1–v5 and closed, one raised by
+the contract audit, and three by the dust sweep audit.
 
 ## Open
 
-None in the contract.
+**None in the contract.** Three off-chain, all in the dust sweep — see
+[SWEEP-REPORT.md](../SWEEP-REPORT.md).
 
-## Raised by this audit
+| id | severity | title |
+|:---:|:---:|---|
+| [`S2`](S2-forfeit-target-self-certifying.md) | Medium | The browser whitelist does not bind the forfeit destination |
+| [`S3`](S3-unbounded-fee.md) | Medium | Nothing bounds the fee on a transaction the sweep asks a user to sign |
+| [`S4`](S4-forfeit-lacks-evaluation-veto.md) | Medium | The evaluation veto guards the opt-in path but not the automatic one |
+
+None is reachable by an unprivileged remote attacker: `S2` and `S3` need the
+engine's response to be wrong, and `S4` needs only a wrong price. Each is rated
+Medium because it defeats a control built specifically to hold under those
+conditions, and because the value each exposes is unbounded.
+
+## Raised by the contract audit
 
 | id | severity | title | status |
 |:---:|:---:|---|---|
@@ -18,6 +30,9 @@ application. It is here rather than filed away because it is the finding the
 previous audit marked "verified safe", and because its severity is misleading:
 the *action* requires an explicit user tick, but the *value* it could give away
 is unbounded. Live data showed an asset worth 245.88 ALGO on that path.
+
+[`S4`](S4-forfeit-lacks-evaluation-veto.md) completes it: the veto `S1` added
+guards the branch requiring a tick, and not the branch that needs none.
 
 ## Closed, from v1–v5
 
