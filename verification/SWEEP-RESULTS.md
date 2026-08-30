@@ -8,70 +8,84 @@ ALGOD_URL=https://your-node SWEEP_ADDRESS=SOMEADDRESS… \
     ./verify-sweep.sh
 ```
 
-Four checks need a mainnet algod. Without `ALGOD_URL` and `SWEEP_ADDRESS` they
+Two checks need a mainnet algod. Without `ALGOD_URL` and `SWEEP_ADDRESS` they
 report `SKIP`; the run below had both, so nothing was skipped. Nothing is
 submitted — the chain cases use `simulate` with `allow-empty-signatures` and no
 key.
 
+**These assert the fixed behaviour.** The first revision of this script
+asserted the defects and passed 23 of 23, which was the finding. `S2` and `S4`
+are closed and `S3` is closed for close-out groups, so each check is now the
+regression test for one of them.
+
 ```
-router:   8d130d6
-engine:   1b2c588
-frontend: 2904746
-widgets:  4b4eec8
+router:   2aad22b   (audited at 8d130d6)
+engine:   9320ae2   (audited at 1b2c588)
+frontend: 199b9a0   (audited at 2904746)
+widgets:  0be86c7   (audited at 4b4eec8)
 date:     2026-08-30
 network:  mainnet, account OGRUNXPS…2CEN2M (31.688265 ALGO, 3 empty holdings)
 ```
 
 ```
-S2 — does the whitelist bind the forfeit destination?
------------------------------------------------------
+S2 — is the forfeit destination bound to something outside the response?
+-------------------------------------------------------------------------
   PASS  an honest forfeit is accepted                            accepted
-  PASS  a forfeit to an attacker, consistently described         accepted
+  PASS  the whitelist alone still cannot see a consistent lie    accepted
   PASS  bytes and description disagreeing is refused             refused
-  PASS  expected[] is built from the plan's own holdings         1
-  PASS  Django forwards the engine answer verbatim               1
+  PASS  the chain agreeing accepts the forfeit                   accepted
+  PASS  the chain disagreeing refuses it                         refused
+  PASS  a bridge that cannot answer refuses (fails closed)       refused
+  PASS  an unreadable asset refuses (fails closed)               refused
+  PASS  signAction runs the chain check too                      1
+  PASS  the shipped wallet bundle exposes assetCreator           1
 
-S3 — is the fee bounded anywhere?
------------------------------------------------------
-  PASS  closeOutProblems never reads txn.fee                     0
-  PASS  a close-out with a 5 ALGO fee passes the whitelist       accepted
-  PASS  the group hygiene guard checks three fields, none a fee  3
-  PASS  the contract's hygiene guard never mentions fee          0
-  PASS  summaryFigures renders no fee                            0
-  PASS  summary.recoverable is gross of fees                     1
+S3 — is the fee bounded?
+-------------------------------------------------------------------------
+  PASS  closeOutProblems reads txn.fee                           2
+  PASS  a close-out with a 5 ALGO fee is refused                 refused
+  PASS  the cap is a fraction of what a close-out returns        1
+  PASS  summaryFigures renders the fee                           1
+  PASS  summary.recoverable is net of fees                       1
+  PASS  the contract's hygiene guard still checks its three fields 3
 
-S3 — what would the chain accept? (needs a node)
------------------------------------------------------
-  PASS  the chain takes the minimum fee                          accepted
-  PASS  the chain takes 0.1 ALGO, cancelling what a close recovers accepted
-  PASS  the chain takes the entire spendable balance as a fee    accepted
+S3 — what the chain would accept, unchanged by any fix (needs a node)
+-------------------------------------------------------------------------
+  PASS  the chain itself still bounds a fee only by the balance  accepted
   PASS  a close-out carrying asnd is refused by the chain        refused
 
-S4 — does the evaluation veto reach the forfeit branch?
------------------------------------------------------
-  PASS  priced_elsewhere has exactly one consumer                1
-  PASS  ...and it is inside the UNPRICED branch                  1
-  PASS  the FORFEIT branch tests nothing but the disposition     1
-  PASS  no router price: unpriced, and not swept by default      unpriced:safe
-  PASS  wrong small price: forfeit, swept with no user action    forfeit:swept
+S4 — does a forfeit check the second opinion?
+-------------------------------------------------------------------------
+  PASS  classify consults disputed_dust                          1
+  PASS  the engine carries the evaluation's value onto the holding 1
+  PASS  no router price at all: still unpriced and still safe    unpriced:safe
+  PASS  wrong small price the evaluation disputes: kept, not swept keep:safe
+  PASS  both sources calling it dust: still forfeited            forfeit:swept
+  PASS  evaluation with no opinion: still forfeited              forfeit:swept
 
 context
------------------------------------------------------
+-------------------------------------------------------------------------
   PASS  the asset cache is consulted before the node by default  1
   PASS  forfeit is included by default; unpriced is not          1
   PASS  unpriced is the only disposition that starts off         1
 
------------------------------------------------------
-  23 passed, 0 failed, 0 skipped
+-------------------------------------------------------------------------
+  26 passed, 0 failed, 0 skipped
 ```
 
 ## Reading the S2 block
 
-The three `accepted` results are not a clean bill of health — they are the
-finding. A group closing a holding to an arbitrary address is accepted whenever
-the description accompanying it names that same address, and only the fourth
-case, where the two disagree, is refused. That is what
-[`S2`](../findings/S2-forfeit-target-self-certifying.md) says the control does.
+**"the whitelist alone still cannot see a consistent lie" passes, and should.**
+`closeOutProblems` compares the bytes against the plan, and a consistent plan
+agrees with itself; that is the reason the chain check exists, not a defect in
+the whitelist. The four `chain.*` checks are the fix: the creator is read from
+the chain, a disagreement refuses, and both failure modes — a bridge that
+cannot answer, an asset that cannot be read — refuse rather than pass.
+
+The `assetCreator` check reaches across repositories on purpose. The widget's
+control fails closed, so it refuses every forfeit until the wallet bundle
+shipping alongside it actually exposes that method; a green check here is what
+says the two are in step.
 
 ## The field-coverage derivation
 
@@ -96,11 +110,18 @@ signature. Neither moves value, and both are noted rather than filed.
 
 ## Test suites at this revision
 
+Before the fixes, and after:
+
 ```
-router/tests/test_sweep.py         123 collected
-engine/core/tests/test_sweep.py     62 collected
-dustsweep jest                     121 passed, 100% line and branch coverage
+router/tests/test_sweep.py         123 collected  ->  139 passed
+engine/core/tests/test_sweep.py     62 collected  ->   64 passed
+dustsweep jest                     121 passed     ->  137 passed
+                                   100% line and branch, both times
 ```
 
-All three findings survive that coverage. See
-[SWEEP-REPORT.md §4](../SWEEP-REPORT.md).
+All three findings survived the first column. That is the point of
+[SWEEP-REPORT.md §4](../SWEEP-REPORT.md): coverage records which lines ran, not
+which claims were tested.
+
+Wider suites at the fixed revision: router 963 passed / 1 skipped, engine core
+569 passed / 1 skipped, widgets 196 passed, wallet 101 passed.

@@ -5,7 +5,7 @@
 - **Component:** off-chain — `dustsweep.js` `closeOutProblems`
 - **Not a contract defect.** A close-out group carries no application call.
 - **Origin:** this audit
-- **Status:** Open
+- **Status:** **Fixed** — `0be86c7` (widget), `199b9a0` (wallet bridge)
 
 ---
 
@@ -144,6 +144,27 @@ The check needs a reference for the creator that does not come from the plan.
    whatever else changes, but it is a complement to (1), not a substitute — it
    moves the burden onto the reader.
 
-Until one of these lands, the honest statement is that the whitelist binds the
-*sender*, the *shape*, and the *empty-holding* destination, and restates the
-engine for the forfeit destination. The docstrings should say so.
+## 7. As delivered
+
+Recommendation 1, in `forfeitTargetProblems`. The creator is resolved through
+the wallet bridge's own algod connection — `assetCreator(id)`, added to
+`SwapBridgeApi` beside the `isOptedIn` that already used that client — and the
+transaction's `asset_close_to` is compared against the chain's answer. One
+lookup per distinct asset, memoised, and only for holdings the plan says still
+carry a balance.
+
+`closeOutProblems` is unchanged and still accepts a consistently-described
+lie. That is deliberate: it is a synchronous, structural check and the new one
+is neither, so they are separate functions that `signAction` runs in sequence,
+cheapest first.
+
+**It fails closed.** A bridge too old to expose `assetCreator`, an unreachable
+node, or an unreadable asset each produce a problem rather than a pass, so a
+forfeit is never signed on an unverifiable destination. The cost is a coupling:
+the widget and the wallet bundle must ship together, or every forfeit is
+refused until the bundle catches up. Empty holdings — where most of what a
+sweep recovers is — are unaffected.
+
+Recommendation 2 (showing the destination in the row) was **not** done. It is
+still worth doing, but it is now a readability improvement rather than a
+control, and it trades screen space for a 58-character address on every line.

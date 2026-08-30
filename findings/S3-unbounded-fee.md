@@ -5,7 +5,8 @@
 - **Component:** off-chain — `dustsweep.js` `closeOutProblems`; also
   `contracts/router_app.py` `_assert_group_is_clean` on the conversion path
 - **Origin:** this audit
-- **Status:** Open
+- **Status:** **Partly fixed** — close-out path closed by `0be86c7` (widget)
+  and `2aad22b` (planner). **The conversion path remains unbounded**; see §6.
 
 ---
 
@@ -113,3 +114,42 @@ conversion path nothing inspects the group in the browser at all.
    group, so a fourth assertion costs almost nothing and would cover the
    conversion path and every other router group. Weigh against its opcode
    budget, which the docstrings show is already tight.
+
+## 6. As delivered, and what is still open
+
+**Closed for close-outs.** `closeOutProblems` now refuses any transaction
+whose fee exceeds `MAX_CLOSE_OUT_FEE`, and the widget shows *Network fees*
+beside *You recover*, with `summary.recoverable` netted so it agrees with
+`next_action`'s `recovers`.
+
+The cap is written as `HOLDING_MINIMUM_BALANCE / 10` rather than as a multiple
+of the 1,000 microALGO protocol minimum. Same number; different property. The
+first draft followed recommendation 1 literally and added a whole-group rule —
+"the fees exceed what this group recovers" — and that rule could never fire,
+because `n` transactions capped at a tenth of the minimum balance can never
+out-cost the `n` minimum balances they release. Expressing the cap as a
+fraction of what a close-out returns makes the group rule unnecessary instead
+of merely redundant, and a test asserts the relationship so that raising the
+constant past the point where it holds fails loudly.
+
+**Still open for conversions.** Recommendation 3 was not taken, and
+`signAction` still inspects only the close-out path. A conversion group is
+built by the engine, carries a router application call, and is signed by the
+user — and neither the widget nor `_assert_group_is_clean` bounds its fees. The
+same drain is therefore reachable through a conversion.
+
+It is left open rather than closed badly because the two candidate fixes both
+need judgement this finding cannot supply on its own:
+
+- **A fourth assertion in `_assert_group_is_clean`** would cover the conversion
+  path and every other router group at once, but it costs opcode budget in a
+  subroutine whose own docstring records a five-way split being refused at
+  1,877 — and it needs a contract deployment.
+- **Inspecting the conversion group in the browser** duplicates for a group
+  whose structure the widget deliberately does not model, since the contract
+  is what validates it.
+
+A conversion is also one holding rather than sixteen, and the router call
+gives the contract a hook a close-out group does not have, so the shape is
+better than the close-out case was. That is a reason to sequence it, not a
+reason to leave it.

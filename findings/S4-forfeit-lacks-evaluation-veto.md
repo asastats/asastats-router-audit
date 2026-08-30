@@ -4,7 +4,7 @@
   an adversary)
 - **Component:** off-chain — `router/sweep.py` `classify` / `closeable`
 - **Origin:** this audit
-- **Status:** Open
+- **Status:** **Fixed** — `2aad22b` (router), `9320ae2` (engine)
 - **Relationship:** completes [`S1`](S1-unpriced-forfeit.md), which fixed the
   adjacent branch
 
@@ -127,3 +127,25 @@ Three properties to preserve, following S1:
   and will differ slightly on everything. The threshold should be a
   disagreement large enough to matter against 0.1 ALGO, not any difference at
   all.
+
+## 5. As delivered
+
+`disputed_dust`, called from `classify` rather than `closeable`, so a refused
+forfeit carries a reason the reader can see rather than vanishing from a list.
+
+`values_by_evaluation` is a second reader of the same `asaitems` payload,
+returning `asset -> microALGO`. It reads only `value`, never `price`: a price
+is per base unit and turning one into a holding's worth needs decimals the
+payload does not carry, so an entry with a price and no value contributes
+nothing — leaving that holding exactly as it was rather than inventing a number
+to compare against.
+
+**The tolerance is the forfeit threshold itself**, which turned out to need no
+new constant. Both sources calling a holding worth no more than the minimum
+balance it locks is agreement; the evaluation calling it worth more than that
+is a dispute, whatever the router said.
+
+A vetoed holding becomes `KEEP`, not `UNPRICED`. `UNPRICED` would grow a
+checkbox that `S1`'s veto then refuses — the asset *is* priced elsewhere — and
+the widget's own `INERT` docstring already says a control that quietly does
+nothing is worse than none.

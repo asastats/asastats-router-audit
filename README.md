@@ -23,13 +23,16 @@ one checkbox from that path. It is [fixed](findings/S1-unpriced-forfeit.md).
 
 **The dust sweep.** That last finding was reason enough to audit the sweep
 properly, since it is the only feature in the product that gives a user's
-assets away. Three further defects, all open, all off-chain — the browser
-control that inspects what a user is asked to sign takes its reference values
-for the most damaging field from the same response it is checking; nothing
-anywhere bounds the fee, and mainnet would accept a close-out group whose fees
-consume the account's entire spendable balance; and the value veto added for
-`S1` guards the path needing an explicit tick rather than the path that needs
-none. See [SWEEP-REPORT.md](SWEEP-REPORT.md).
+assets away. Three further defects, all off-chain — the browser control that
+inspects what a user is asked to sign took its reference for the most damaging
+field from the same response it was checking; nothing anywhere bounded the fee,
+and mainnet would accept a close-out group whose fees consume the account's
+entire spendable balance; and the value veto added for `S1` guarded the path
+needing an explicit tick rather than the path that needs none.
+
+Two are fixed and one is fixed for close-out groups but **still open for
+conversion groups**, where bounding the fee needs either a contract change or a
+second group model in the browser. See [SWEEP-REPORT.md](SWEEP-REPORT.md).
 
 **The mainnet deployment is restricted to its admin, and this audit does not
 clear it to be otherwise.** Every audit of this contract — this one included —
@@ -45,17 +48,18 @@ Every factual claim in the report is a command:
 ```bash
 cd verification
 ROUTER=/path/to/router ./verify.sh          # the contract — 27 checks
-ROUTER=/path/to/router ./verify-sweep.sh    # the dust sweep — 23 checks
+ROUTER=/path/to/router ./verify-sweep.sh    # the dust sweep — 26 checks
 ```
 
 `verify.sh` needs no node, no credentials and no network. `verify-sweep.sh`
-needs node.js and, for four of its checks, a mainnet algod — it reports those
+needs node.js and, for two of its checks, a mainnet algod — it reports those
 as `SKIP` rather than passing them silently when one is not configured. Neither
 script submits anything; the chain cases use `simulate` with no key.
 
-The recorded output is in [verification/RESULTS.md](verification/RESULTS.md).
-If something in either report is not covered there, it is not verified — and
-each report's final sections say what was deliberately left unchecked.
+The recorded output is in [verification/RESULTS.md](verification/RESULTS.md)
+and [verification/SWEEP-RESULTS.md](verification/SWEEP-RESULTS.md). If
+something in either report is not covered there, it is not verified — and each
+report's final sections say what was deliberately left unchecked.
 
 ## Layout
 

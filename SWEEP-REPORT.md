@@ -10,8 +10,8 @@ own. For the contract, read [REPORT.md](REPORT.md).
   `router/sweep.py`, `router/selection.py`, `engine/core/sweep.py`, and the
   wallet bridge's `signAndSend`
 - **Verification:** [verification/verify-sweep.sh](verification/verify-sweep.sh)
-  — 23 checks, all passing, none skipped
-- **Findings:** three, all open, all Medium
+  — 26 checks, all passing, none skipped
+- **Findings:** three, all Medium. Two fixed, one partly fixed.
 
 ---
 
@@ -33,13 +33,13 @@ read the rest with the same intent.
 
 | id | severity | title | status |
 |:---:|:---:|---|---|
-| [`S2`](findings/S2-forfeit-target-self-certifying.md) | Medium | The browser whitelist does not bind the forfeit destination | Open |
-| [`S3`](findings/S3-unbounded-fee.md) | Medium | Nothing bounds the fee on a transaction the sweep asks a user to sign | Open |
-| [`S4`](findings/S4-forfeit-lacks-evaluation-veto.md) | Medium | The evaluation veto guards the opt-in path but not the automatic one | Open |
+| [`S2`](findings/S2-forfeit-target-self-certifying.md) | Medium | The browser whitelist does not bind the forfeit destination | **Fixed** |
+| [`S3`](findings/S3-unbounded-fee.md) | Medium | Nothing bounds the fee on a transaction the sweep asks a user to sign | **Partly fixed** |
+| [`S4`](findings/S4-forfeit-lacks-evaluation-veto.md) | Medium | The evaluation veto guards the opt-in path but not the automatic one | **Fixed** |
 
-All three share a precondition worth stating plainly: **none is reachable by an
-unprivileged remote attacker.** `S2` and `S3` need the engine's response to be
-wrong — through code compromise, or through the Redis asset cache the engine
+All three share a precondition worth stating plainly: **none was reachable by
+an unprivileged remote attacker.** `S2` and `S3` need the engine's response to
+be wrong — through code compromise, or through the Redis asset cache the engine
 reads without checking. `S4` needs only a wrong price, which is a bug rather
 than an adversary, and one of exactly that class occurred in production three
 weeks ago.
@@ -47,6 +47,14 @@ weeks ago.
 They are rated Medium rather than Low because each defeats a control that was
 built specifically to hold under those conditions, and because the value each
 exposes is unbounded.
+
+**What is still open.** `S3`'s fee bound covers the sweep's close-out groups
+and not its conversion groups: a conversion carries a router application call
+and is delegated to the contract, whose `_assert_group_is_clean` checks three
+fields and no fee. Closing it means either a fourth assertion in a subroutine
+whose opcode budget is already tight — and a contract deployment — or teaching
+the widget a group structure it deliberately does not model. See
+[`S3` §6](findings/S3-unbounded-fee.md).
 
 ### `S2` — the whitelist restates the engine where it matters most
 
@@ -69,6 +77,10 @@ catches is a response that contradicts itself.
 
 The reader cannot compensate, because the row never shows the destination.
 
+**Fixed** by resolving the creator from the chain through the wallet bridge's
+own algod client and comparing the transaction against that, failing closed
+when it cannot be read.
+
 ### `S3` — the fee is unbounded, and invisible
 
 Deriving the field coverage mechanically rather than by eye: the whitelist
@@ -86,6 +98,10 @@ fees total the account's entire spendable balance (28.27 ALGO) is accepted.
 The interface would not move. `summary.fees` is computed, sent to the browser,
 and never rendered; the *You recover* figure is gross of fees.
 
+**Partly fixed.** Close-out fees are now capped at a tenth of what a close-out
+returns and the fee is shown beside what the sweep recovers. Conversion groups
+are still unbounded.
+
 ### `S4` — the veto is on the branch that needs it less
 
 `S1`'s fix refuses to forfeit an `UNPRICED` holding that the account evaluation
@@ -101,6 +117,10 @@ The naive fix is wrong and the finding says why: extending the same presence
 test to `FORFEIT` would disable the feature, because genuine dust is normally
 priced by both sources agreeing it is worthless. What is needed is a
 disagreement test.
+
+**Fixed** by `disputed_dust`, which refuses a forfeit when the evaluation
+values the holding above the forfeit threshold — the threshold serving as its
+own tolerance, so there is no new constant.
 
 ## 3. What was checked and found sound
 
@@ -133,9 +153,10 @@ it disliked gives no information about coverage.
 
 ## 4. A note on test coverage
 
-`dustsweep.test.js` passes 121 tests at **100% line and branch coverage** of
-`dustsweep.js`. The suites either side are healthy too — 123 in
-`router/tests/test_sweep.py`, 62 in `engine/core/tests/test_sweep.py`.
+`dustsweep.test.js` passed 121 tests at **100% line and branch coverage** of
+`dustsweep.js`. The suites either side were healthy too — 123 in
+`router/tests/test_sweep.py`, 62 in `engine/core/tests/test_sweep.py`. (After
+the fixes: 137, 139 and 64, still at 100% line and branch.)
 
 All three findings survive that. Coverage records which lines ran, not which
 claims were tested, and the test that appears to prove the close destination

@@ -5,16 +5,21 @@
 # The companion to verify.sh, for the off-chain dust sweep rather than the
 # contract. Same standard: a claim that cannot be re-run is not a finding.
 #
+# **These now assert the fixed behaviour.** The first revision of this script
+# asserted the defects, and every check passed - which was the finding. `S2`,
+# `S3` and `S4` are closed, so each check below is the regression test for one
+# of them, and a failure here means a fix has been undone.
+#
 # Usage:
 #     ROUTER=/path/to/router WIDGETS=/path/to/widgets ./verify-sweep.sh
 #     ... --strict     # exit 1 on the first failure
 #
 # Needs: python with algosdk and the router's dependencies, and node.
-# Case 3 additionally needs a mainnet algod. Set ALGOD_URL and ALGOD_TOKEN to
+# Case 3 additionally needs a mainnet algod. Set ALGOD_URL and SWEEP_ADDRESS to
 # run it; without them it is reported as SKIP rather than passed over, because
 # a check that quietly does not run is how the previous audits went wrong.
 #
-# It reads only. It submits nothing. Case 3 uses `simulate` with
+# It reads only. It submits nothing. The chain cases use `simulate` with
 # allow-empty-signatures and no key.
 
 set -uo pipefail
@@ -23,6 +28,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 ROUTER="${ROUTER:-$(cd "${HERE}/../../router" 2>/dev/null && pwd)}"
 WIDGETS="${WIDGETS:-$(cd "${HERE}/../../frontend/website/widgets" 2>/dev/null && pwd)}"
 ENGINE="${ENGINE:-$(cd "${HERE}/../../engine" 2>/dev/null && pwd)}"
+BUNDLE="${BUNDLE:-${HERE}/../../frontend/website/static/js/bundle.js}"
 PYTHON="${PYTHON:-python3}"
 STRICT=""
 [ "${1:-}" = "--strict" ] && STRICT="yes"
@@ -61,10 +67,6 @@ skip () {
 WORK="$(mktemp -d)"
 trap 'rm -rf "${WORK}"' EXIT
 
-echo
-echo "S2 — does the whitelist bind the forfeit destination?"
-echo "-----------------------------------------------------"
-
 cat > "${WORK}/build.py" <<'PY'
 import json, random, sys
 from algosdk import encoding
@@ -90,7 +92,7 @@ def described(creator):
     return [{"asset": ASSET, "unit": "USDC", "amount": 1000000,
              "creator": creator, "disposition": "forfeit"}]
 
-json.dump({"owner": OWNER, "cases": {
+json.dump({"owner": OWNER, "creator": CREATOR, "attacker": ATTACKER, "cases": {
     "honest":   {"txns": group(CREATOR),  "described": described(CREATOR)},
     "tampered": {"txns": group(ATTACKER), "described": described(ATTACKER)},
     "fat_fee":  {"txns": group(CREATOR, 5_000_000, True),
@@ -103,53 +105,92 @@ cat > "${WORK}/check.js" <<JS
 global.atob = (b) => Buffer.from(b, "base64").toString("binary");
 const sweep = require("${WIDGET}");
 const data = require("${WORK}/groups.json");
-for (const name of ["honest", "tampered", "fat_fee", "inconsistent"]) {
-  const one = data.cases[name];
-  const problems = sweep.closeOutProblems(one.txns, data.owner, one.described);
-  console.log(name + "=" + (problems.length ? "refused" : "accepted"));
-}
+const verdict = (p) => (p.length ? "refused" : "accepted");
+
+(async () => {
+  for (const name of ["honest", "tampered", "fat_fee", "inconsistent"]) {
+    const one = data.cases[name];
+    console.log(
+      "whitelist." + name + "=" +
+      verdict(sweep.closeOutProblems(one.txns, data.owner, one.described))
+    );
+  }
+
+  // The independent half: the creator comes from the chain, not the plan.
+  const chainSays = (creator) => ({ assetCreator: async () => creator });
+  const t = data.cases.tampered;
+  console.log("chain.agrees=" + verdict(
+    await sweep.forfeitTargetProblems(
+      data.cases.honest.txns, data.cases.honest.described, chainSays(data.creator))));
+  console.log("chain.disagrees=" + verdict(
+    await sweep.forfeitTargetProblems(t.txns, t.described, chainSays(data.creator))));
+  console.log("chain.silent=" + verdict(
+    await sweep.forfeitTargetProblems(t.txns, t.described, {})));
+  console.log("chain.unreadable=" + verdict(
+    await sweep.forfeitTargetProblems(t.txns, t.described, chainSays(null))));
+})();
 JS
 
 if "${PYTHON}" "${WORK}/build.py" > "${WORK}/groups.json" 2>/dev/null \
    && node "${WORK}/check.js" > "${WORK}/out.txt" 2>/dev/null; then
-    check "an honest forfeit is accepted" \
-        "accepted" "$(sed -n 's/^honest=//p' "${WORK}/out.txt")"
-    check "a forfeit to an attacker, consistently described" \
-        "accepted" "$(sed -n 's/^tampered=//p' "${WORK}/out.txt")"
-    check "bytes and description disagreeing is refused" \
-        "refused" "$(sed -n 's/^inconsistent=//p' "${WORK}/out.txt")"
+    HAVE_JS="yes"
 else
-    skip "whitelist cases" "needs python+algosdk and node"
+    HAVE_JS=""
 fi
 
-check "expected[] is built from the plan's own holdings" "1" \
-    "$(grep -c 'expected\[one.asset\] = Number(one.amount) === 0 ? address : one.creator' "${WIDGET}")"
-check "Django forwards the engine answer verbatim" "1" \
-    "$(grep -c 'return JsonResponse(answered)' "${WIDGETS}/inhouse/dustsweep/views.py")"
+said () { sed -n "s/^$1=//p" "${WORK}/out.txt" 2>/dev/null; }
 
 echo
-echo "S3 — is the fee bounded anywhere?"
-echo "-----------------------------------------------------"
+echo "S2 — is the forfeit destination bound to something outside the response?"
+echo "-------------------------------------------------------------------------"
 
-check "closeOutProblems never reads txn.fee" "0" \
+if [ -n "${HAVE_JS}" ]; then
+    check "an honest forfeit is accepted" "accepted" "$(said whitelist.honest)"
+    # Unchanged and expected: the whitelist compares the bytes against the
+    # plan, and a consistent plan agrees with itself. This is *why* the second
+    # check below exists, not a defect in this one.
+    check "the whitelist alone still cannot see a consistent lie" \
+        "accepted" "$(said whitelist.tampered)"
+    check "bytes and description disagreeing is refused" \
+        "refused" "$(said whitelist.inconsistent)"
+    check "the chain agreeing accepts the forfeit" "accepted" "$(said chain.agrees)"
+    check "the chain disagreeing refuses it" "refused" "$(said chain.disagrees)"
+    check "a bridge that cannot answer refuses (fails closed)" \
+        "refused" "$(said chain.silent)"
+    check "an unreadable asset refuses (fails closed)" \
+        "refused" "$(said chain.unreadable)"
+else
+    skip "whitelist and chain cases" "needs python+algosdk and node"
+fi
+
+check "signAction runs the chain check too" "1" \
+    "$(grep -c 'problems = await forfeitTargetProblems(' "${WIDGET}")"
+check "the shipped wallet bundle exposes assetCreator" "1" \
+    "$(grep -c 'assetCreator' "${BUNDLE}" 2>/dev/null || echo 0)"
+
+echo
+echo "S3 — is the fee bounded?"
+echo "-------------------------------------------------------------------------"
+
+check "closeOutProblems reads txn.fee" "2" \
     "$(sed -n '/function closeOutProblems/,/^}/p' "${WIDGET}" | grep -c 'txn\.fee')"
-check "a close-out with a 5 ALGO fee passes the whitelist" \
-    "accepted" "$(sed -n 's/^fat_fee=//p' "${WORK}/out.txt" 2>/dev/null || echo accepted)"
-check "the group hygiene guard checks three fields, none a fee" "3" \
+if [ -n "${HAVE_JS}" ]; then
+    check "a close-out with a 5 ALGO fee is refused" \
+        "refused" "$(said whitelist.fat_fee)"
+fi
+check "the cap is a fraction of what a close-out returns" "1" \
+    "$(grep -c 'var MAX_CLOSE_OUT_FEE = HOLDING_MINIMUM_BALANCE / 10;' "${WIDGET}")"
+check "summaryFigures renders the fee" "1" \
+    "$(sed -n '/function summaryFigures/,/^}/p' "${WIDGET}" | grep -c 'Network fees')"
+check "summary.recoverable is net of fees" "1" \
+    "$(grep -c '"recoverable": (closes + conversions) \* HOLDING_MINIMUM_BALANCE - fees,' "${SWEEP}")"
+check "the contract's hygiene guard still checks its three fields" "3" \
     "$(sed -n '/def _assert_group_is_clean/,/def _signed_floor/p' "${CONTRACT}" | grep -c 'Global.zero_address$')"
-check "the contract's hygiene guard never mentions fee" "0" \
-    "$(sed -n '/def _assert_group_is_clean/,/def _signed_floor/p' "${CONTRACT}" | grep -c 'transaction\.fee')"
-check "summaryFigures renders no fee" "0" \
-    "$(sed -n '/function summaryFigures/,/^}/p' "${WIDGET}" | grep -c 'fees')"
-check "summary.recoverable is gross of fees" "1" \
-    "$(grep -c '"recoverable": (closes + conversions) \* HOLDING_MINIMUM_BALANCE,' "${SWEEP}")"
 
 echo
-echo "S3 — what would the chain accept? (needs a node)"
-echo "-----------------------------------------------------"
+echo "S3 — what the chain would accept, unchanged by any fix (needs a node)"
+echo "-------------------------------------------------------------------------"
 
-# ALGOD_TOKEN may legitimately be empty - a URL-authenticated endpoint needs
-# no header - so it is defaulted rather than required.
 export ALGOD_TOKEN="${ALGOD_TOKEN:-}"
 if [ -n "${ALGOD_URL:-}" ] && [ -n "${SWEEP_ADDRESS:-}" ]; then
     cat > "${WORK}/sim.py" <<'PY'
@@ -185,17 +226,11 @@ def run(fee, asset, revoke=None):
 if not empty:
     print("noempty")
 else:
-    print("minfee=" + ("accepted" if run(1000, empty[0]) else "refused"))
-    print("tenth=" + ("accepted" if run(100_000, empty[0]) else "refused"))
     print("whole=" + ("accepted" if run(spendable, empty[0]) else "refused"))
     print("clawback=" + ("accepted" if run(1000, empty[0], address) else "refused"))
 PY
     if "${PYTHON}" "${WORK}/sim.py" > "${WORK}/sim.txt" 2>/dev/null; then
-        check "the chain takes the minimum fee" \
-            "accepted" "$(sed -n 's/^minfee=//p' "${WORK}/sim.txt")"
-        check "the chain takes 0.1 ALGO, cancelling what a close recovers" \
-            "accepted" "$(sed -n 's/^tenth=//p' "${WORK}/sim.txt")"
-        check "the chain takes the entire spendable balance as a fee" \
+        check "the chain itself still bounds a fee only by the balance" \
             "accepted" "$(sed -n 's/^whole=//p' "${WORK}/sim.txt")"
         check "a close-out carrying asnd is refused by the chain" \
             "refused" "$(sed -n 's/^clawback=//p' "${WORK}/sim.txt")"
@@ -203,50 +238,56 @@ PY
         skip "mainnet simulation" "simulate call failed"
     fi
 else
-    skip "mainnet simulation" "set ALGOD_URL, ALGOD_TOKEN and SWEEP_ADDRESS"
+    skip "mainnet simulation" "set ALGOD_URL and SWEEP_ADDRESS"
 fi
 
 echo
-echo "S4 — does the evaluation veto reach the forfeit branch?"
-echo "-----------------------------------------------------"
+echo "S4 — does a forfeit check the second opinion?"
+echo "-------------------------------------------------------------------------"
 
-check "priced_elsewhere has exactly one consumer" "1" \
-    "$(grep -c 'and not one.priced_elsewhere' "${SWEEP}")"
-check "...and it is inside the UNPRICED branch" "1" \
-    "$(sed -n '/^def closeable/,/^def convertible/p' "${SWEEP}" \
-       | grep -A3 'disposition == UNPRICED' | grep -c 'not one.priced_elsewhere')"
-check "the FORFEIT branch tests nothing but the disposition" "1" \
-    "$(sed -n '/^def closeable/,/^def convertible/p' "${SWEEP}" \
-       | grep -c 'one.disposition == FORFEIT$')"
+check "classify consults disputed_dust" "1" \
+    "$(grep -c 'if disputed_dust(holding, forfeit_threshold):' "${SWEEP}")"
+check "the engine carries the evaluation's value onto the holding" "1" \
+    "$(grep -c 'evaluated_value=evaluated_values.get(asset),' "${ENGINE}/core/sweep.py" 2>/dev/null || echo 0)"
 
 cat > "${WORK}/asym.py" <<PY
 import sys
 sys.path.insert(0, "${ROUTER}")
 from router.sweep import Holding, classify, closeable
 
-def swept(value):
+def swept(value, evaluated):
     one = classify(Holding(asset=1134696561, unit="XALGO", amount=200000000,
         value=value, creator="ZCAYJLPV3SLSZWEKJ4S2XQJKE2VM73VB6HTO6SR7URJCFWB2JXO47PW5N4",
-        priced_elsewhere=True), 5_000_000)
+        priced_elsewhere=evaluated is not None,
+        evaluated_value=evaluated), 5_000_000)
     return one.disposition, one in closeable([one], opted_in=(), excluded=())
 
-for name, value in (("gap", None), ("wrong", 50_000)):
-    disposition, taken = swept(value)
+for name, value, evaluated in (
+    ("gap", None, 245_878_745),
+    ("disputed", 50_000, 245_878_745),
+    ("agreed", 50_000, 50_000),
+    ("silent", 50_000, None),
+):
+    disposition, taken = swept(value, evaluated)
     print(f"{name}={disposition}:{'swept' if taken else 'safe'}")
 PY
 
 if "${PYTHON}" "${WORK}/asym.py" > "${WORK}/asym.txt" 2>/dev/null; then
-    check "no router price: unpriced, and not swept by default" \
+    check "no router price at all: still unpriced and still safe" \
         "unpriced:safe" "$(sed -n 's/^gap=//p' "${WORK}/asym.txt")"
-    check "wrong small price: forfeit, swept with no user action" \
-        "forfeit:swept" "$(sed -n 's/^wrong=//p' "${WORK}/asym.txt")"
+    check "wrong small price the evaluation disputes: kept, not swept" \
+        "keep:safe" "$(sed -n 's/^disputed=//p' "${WORK}/asym.txt")"
+    check "both sources calling it dust: still forfeited" \
+        "forfeit:swept" "$(sed -n 's/^agreed=//p' "${WORK}/asym.txt")"
+    check "evaluation with no opinion: still forfeited" \
+        "forfeit:swept" "$(sed -n 's/^silent=//p' "${WORK}/asym.txt")"
 else
     skip "forfeit asymmetry" "needs the router package importable"
 fi
 
 echo
 echo "context"
-echo "-----------------------------------------------------"
+echo "-------------------------------------------------------------------------"
 check "the asset cache is consulted before the node by default" "1" \
     "$(grep -c 'get_env_variable("USE_CACHED_NODE_DATA", "true")' "${ENGINE}/engine/settings.py" 2>/dev/null || echo 0)"
 check "forfeit is included by default; unpriced is not" "1" \
@@ -255,7 +296,7 @@ check "unpriced is the only disposition that starts off" "1" \
     "$(grep -c 'unpriced: { label: "Unpriced", included: false' "${WIDGET}")"
 
 echo
-echo "-----------------------------------------------------"
+echo "-------------------------------------------------------------------------"
 printf '  %d passed, %d failed, %d skipped\n' "${PASS}" "${FAIL}" "${SKIP}"
 echo
 [ "${FAIL}" -eq 0 ] || exit 1
