@@ -57,21 +57,25 @@ warning; it is what makes it load-bearing.** See [DISCLAIMER.md](DISCLAIMER.md).
 
 ## Check it yourself
 
-Every factual claim in the reports is a command. 134 of them:
+Every factual claim in the reports is a command. 185 of them:
 
 ```bash
 cd verification
-ROUTER=/path/to/router ./verify.sh              # the contract, from source — 38
-ROUTER=/path/to/router ./verify-sweep.sh        # the dust sweep — 42
-python3 verify-groups.py                        # what the chain did — 54
+ROUTER=/path/to/router ./verify.sh              # the contract, from source — 39
+ROUTER=/path/to/router ./verify-sweep.sh        # the dust sweep — 84
+python3 verify-groups.py                        # what the chain did — 62
 ```
 
 `verify.sh` needs no node, no credentials and no network. `verify-sweep.sh`
-needs node.js and, for two of its checks, a mainnet algod. `verify-groups.py`
-runs offline against the transactions in [evidence/](evidence/) and uses a node
-for six further checks when one is configured. All three report `SKIP` rather
-than passing silently when something they need is absent, and none submits
-anything; the chain cases use `simulate` with no key.
+needs node.js and, for three of its checks, a mainnet algod — 81 without one.
+`verify-groups.py` runs offline against the transactions in
+[evidence/](evidence/) — 58 — and adds four more when a node is configured.
+
+**All three count what they skipped, and say so on the last line.** That is not
+decoration: `verify.sh` had no skip counter at all, so an absent deployment
+manifest took its whole final section out of the run behind a cheerful
+`passed 38, failed 0`. None of them submits anything; the chain cases use
+`simulate` with no key.
 
 Recorded output: [RESULTS.md](verification/RESULTS.md),
 [SWEEP-RESULTS.md](verification/SWEEP-RESULTS.md),
