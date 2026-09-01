@@ -11,13 +11,13 @@ own. For the contract, read [REPORT.md](REPORT.md).
   `router/sweep.py`, `router/selection.py`, `engine/core/sweep.py`, and the
   wallet bridge's `signAndSend`
 - **Verification:** [verification/verify-sweep.sh](verification/verify-sweep.sh)
-  — 45 checks, all passing; plus six sweep groups that executed on mainnet, in
-  [evidence/](evidence/). Five of the 45 pin `S6`'s reproduction rather than a
-  fix, and must be inverted when it is closed: a passing run of this script
-  must never be readable as "`S6` is handled".
-- **Findings:** five — four Medium and one Informational. Four are fixed and
-  deployed (`S3`'s contract half went live on 2026-08-30; see §2). **`S6` is
-  open.**
+  — 50 checks, all passing; plus six sweep groups that executed on mainnet, in
+  [evidence/](evidence/). Those groups are now a fixture in the widget's own
+  suite as well: `S6`'s fix is a rule about router groups, so its accepting
+  cases are 97 transactions that executed rather than fixtures written to pass.
+- **Findings:** six — five Medium and one Informational, **all fixed**. Five
+  are deployed (`S3`'s contract half went live on 2026-08-30; see §2); `S6`'s
+  fix is in the widget and not yet released.
 
 ---
 
@@ -43,7 +43,7 @@ read the rest with the same intent.
 | [`S3`](findings/S3-unbounded-fee.md) | Medium | Nothing bounds the fee on a transaction the sweep asks a user to sign | **Fixed**, both halves deployed |
 | [`S4`](findings/S4-forfeit-lacks-evaluation-veto.md) | Medium | The evaluation veto guards the opt-in path but not the automatic one | **Fixed** |
 | [`S5`](findings/S5-malformed-evaluation-raises.md) | Info | A malformed evaluation took the whole sweep down rather than degrading | **Fixed** |
-| [`S6`](findings/S6-convert-path-unchecked.md) | Medium | The conversion path is checked by nothing the engine does not choose | **Open** |
+| [`S6`](findings/S6-convert-path-unchecked.md) | Medium | The conversion path is checked by nothing the engine does not choose | **Fixed** |
 
 The four Medium ones share a precondition worth stating plainly: **none is
 reachable by an unprivileged remote attacker.** `S2`, `S3` and `S6` need the

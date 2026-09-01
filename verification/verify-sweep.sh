@@ -445,32 +445,40 @@ JS
 fi
 
 echo
-echo "S6 — is the conversion path checked at all? (OPEN)"
+echo "S6 — is the conversion path checked at all?"
 echo "-------------------------------------------------------------------------"
-# These pin the reproduction of an OPEN finding, so they assert the gap rather
-# than a fix. When S6 is closed they must be inverted, and that is deliberate:
-# a passing run of this script should never be readable as "S6 is handled".
+# These asserted the gap while S6 was open. They assert the fix now.
 
-# The convert branch returns before either browser check is reached.
 check "signAction dispatches on the engine's own action.kind" "1" \
     "$(sed -n '/^async function signAction/,/^}/p' "${WIDGET}" | grep -c 'if (action.kind === "convert") {')"
-check "...and its convert branch runs no group check" "0" \
-    "$(sed -n '/if (action.kind === "convert") {/,/^  }/p' "${WIDGET}" | grep -c 'closeOutProblems\|forfeitTargetProblems')"
+check "...and its convert branch no longer trusts it" "1" \
+    "$(sed -n '/if (action.kind === "convert") {/,/^  }/p' "${WIDGET}" | grep -c 'routedGroupProblems(action.transactions)')"
+check "the browser mirrors the contract's three hygiene fields" "3" \
+    "$(sed -n '/^function routedGroupProblems/,/^}/p' "${WIDGET}" | grep -c 'txn.rekey\|txn.close\|txn.aclose')"
+check "...and the contract's group fee ceiling, by its number" "1" \
+    "$(grep -c 'var MAX_GROUP_FEE = 1000000;' "${WIDGET}")"
+check "which is the number the contract actually uses" "1" \
+    "$(grep -c '^MAX_GROUP_FEE = 1_000_000$' "${CONTRACT}")"
+check "a group that will not decode is refused, not skipped" "2" \
+    "$(sed -n '/^function routedGroupProblems/,/^}/p' "${WIDGET}" | grep -c 'could not be decoded')"
 
-# The bridge checks the group's structure, never a field that moves value.
+# The contract would refuse these groups. It only ran if it was called, which
+# was the whole of S6 - the same structural fact S3 §7 records for close-outs.
+check "the hygiene guard refuses closes, when it runs" "2" \
+    "$(sed -n '/def _assert_group_is_clean/,/def _signed_floor/p' "${CONTRACT}" | grep -c 'this group closes')"
+
 if [ -f "${SWAPBRIDGE}" ]; then
     check "signAndSendPartial checks quote placement and signatures" "3" \
         "$(sed -n '/export async function signAndSendPartial/,/^}/p' "${SWAPBRIDGE}" | grep -c 'Quote authorization must be the final transaction\|Backend signature does not match the grouped transaction\|Backend quote signature is missing')"
-    check "...and inspects no close, rekey or fee field" "0" \
-        "$(sed -n '/export async function signAndSendPartial/,/^}/p' "${SWAPBRIDGE}" | grep -c 'close\|rekey\|\.fee')"
 else
     skip "the bridge's partial-group checks" "set SWAPBRIDGE=/path/to/swapBridge.ts"
 fi
 
-# The contract would refuse these groups. It only runs if it is called, which
-# is the whole of S6 - the same structural fact S3 §7 records for close-outs.
-check "the hygiene guard refuses closes, when it runs" "2" \
-    "$(sed -n '/def _assert_group_is_clean/,/def _signed_floor/p' "${CONTRACT}" | grep -c 'this group closes')"
+# The lookup that used to hang forever now refuses instead.
+check "a creator lookup that never answers times out" "1" \
+    "$(grep -c 'var CREATOR_LOOKUP_TIMEOUT = ' "${WIDGET}")"
+check "...and a timeout resolves to null, so it joins the refusals" "1" \
+    "$(sed -n '/^function withTimeout/,/^}/p' "${WIDGET}" | grep -c 'resolve(null)')"
 
 echo
 echo "context"

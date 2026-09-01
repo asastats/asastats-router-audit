@@ -23,12 +23,12 @@ reports — 38 mechanical checks, all passing, in
 transactions that executed, in
 [verification/GROUP-RESULTS.md](verification/GROUP-RESULTS.md).
 
-**One finding is open, and it is off-chain.**
-[`S6`](findings/S6-convert-path-unchecked.md), Medium, raised 2026-09-01: the
-dust sweep's conversion path runs no browser check on the group it signs, and
-the contract's hygiene guard cannot stand in for one because a group that never
-calls the contract never reaches it. Nothing in the contract needs to change
-for it. See §3.1 and §4.0.
+**This report raised one finding of its own, and it is closed.**
+[`S6`](findings/S6-convert-path-unchecked.md), Medium, off-chain, 2026-09-01:
+the dust sweep's conversion path ran no browser check on the group it signed,
+and the contract's hygiene guard could not stand in for one because a group
+that never calls the contract never reaches it. Fixed by mirroring that guard
+in the browser. Nothing in the contract changed. See §3.1 and §4.0.
 
 **This is still not a clearance for unrestricted public deployment**, and the
 reason has nothing to do with the findings:
@@ -160,7 +160,8 @@ the sweep's **conversion** path has neither: `signAction` decides whether to
 run the browser check by reading `action.kind` from the engine's own response,
 and takes an unchecked branch for `convert`. Off-chain, and not a contract
 defect — but it is the case this section's reasoning did not cover, and it is
-recorded here so the next reader does not re-derive the same comfort.
+recorded here so the next reader does not re-derive the same comfort. The
+browser now carries a copy of this guard for exactly that reason.
 
 The seven groups in [evidence/](evidence/) show the separation this forces:
 none of the four carrying a router call contains a top-level `asset_close_to`,
@@ -188,16 +189,22 @@ re-verified line by line; the table below is the summary, and
 | `M7` | Medium | MWPT asymmetric weight quoting drift | exact off-chain math |
 | `L1`–`L7`, `I1`–`I7` | Low / Info | see [findings/](findings/) | |
 
-### 4.0 The one still open
+### 4.0 The one this report raised, and how it closed
 
-[`S6`](findings/S6-convert-path-unchecked.md) — **Medium, off-chain, open.**
+[`S6`](findings/S6-convert-path-unchecked.md) — **Medium, off-chain, fixed.**
 Raised on 2026-09-01 by reviewing the fix for `S2`/`S3` rather than by doubting
 it: that fix is sound on the path it covers, and the wallet bridge's
 `assetCreator` genuinely resolves a forfeit destination from algod and fails
-closed on every way the lookup can fail. What the review found sits one level
-up, in which branch runs at all. See §3.1 for why the contract's own hygiene
-guard does not close it, and [`SWEEP-REPORT.md`](SWEEP-REPORT.md) for the
-subsystem it belongs to.
+closed on every way the lookup can fail. What the review found sat one level
+up, in which branch ran at all.
+
+Closed by mirroring `_assert_group_is_clean` in the browser, carrying this
+contract's own `MAX_GROUP_FEE` rather than a number chosen off-chain, so that
+`action.kind` no longer decides whether a group is inspected. **No contract
+change was needed or made.** The mirror was checked against the 97 transactions
+in [evidence/](evidence/): all 97 decode, and the dearest group that has
+executed pays 71,000 microALGO against the 1,000,000 ceiling. See §3.1 for why
+the contract could not close this itself.
 
 ### 4.1 The one that was not closed, and now is
 

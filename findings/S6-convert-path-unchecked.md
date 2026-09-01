@@ -7,7 +7,7 @@
 - **Partly a contract matter.** `_assert_group_is_clean` would refuse the
   groups described here, but only if it ran, and nothing off-chain makes it run.
 - **Origin:** review of the `S2`/`S3` fix, 2026-09-01
-- **Status:** **Open**
+- **Status:** **Fixed** — `routedGroupProblems` in the widget; see §8
 
 ---
 
@@ -163,17 +163,53 @@ whichever branch is taken, closes and rekeys are refused.
 reads the msgpack subset a *close-out* uses. A router group carries application
 calls — `apaa` argument arrays, `apat`/`apas` foreign arrays, notes — which are
 larger and more varied. Canonical encoding uses the smallest tag that fits, so
-a transaction under 64 KiB should stay inside the supported set (`0xc4`–`0xc6`,
-`0xd9`/`0xda`, `0xdc`, `0xde`), but "should" is doing work in that sentence and
-an unsupported tag currently throws. Either widen the decoder's `default` to a
-recorded, skipped value rather than a throw, or have the convert check refuse
-only on fields it positively decoded and treat a decode failure as a refusal
-after measuring real router groups. **This should not ship without exercising
-it against captured mainnet route groups** — a false refusal here breaks every
-conversion.
+a transaction under 64 KiB should stay inside the supported set, but "should"
+is doing work in that sentence. **This should not ship without exercising it
+against real router groups.**
 
-An alternative that does not touch the decoder: have the engine's convert
-responses carry the router application id, and assert on the client that the
-group contains an application call to it. That is weaker — it re-anchors to the
-response — but it restores the contract's guarantee rather than duplicating it,
-and the contract is the thing actually doing the refusing.
+---
+
+## 8. As delivered
+
+`routedGroupProblems`, applied to `action.transactions` in `signAction`'s
+convert branch before anything reaches `signAndSendPartial`. It mirrors
+`_assert_group_is_clean` field for field — no `rekey`, no `close`, no `aclose`,
+and a group fee total against `MAX_GROUP_FEE`, carrying the contract's own
+1,000,000 rather than a number chosen here. Mirroring cannot refuse a group the
+contract would accept; what the copy buys is that it *runs*, whatever the
+response calls the group. `action.kind` still selects the branch and no longer
+decides whether checking happens.
+
+**The decoder risk in §7 was settled with evidence, not reasoning.** The seven
+groups in [evidence/](../evidence/) were re-encoded from what the indexer
+returned and run through the shipped `decodeMsgpack`: **97 of 97 decode**,
+application calls included. The tags real traffic uses are `fixmap`,
+`fixarray`, `fixstr`, `bin8` and `uint16/32/64` — every one already supported,
+with no `map16`, `bin16/32` or anything outside the set. Those 97 transactions
+are now a test fixture (`tests/javascript/mainnet-groups.json`), so the honest
+side of this rule is tested against traffic that executed rather than against
+fixtures written to pass. A transaction that will not decode is refused rather
+than skipped, so a tag that does turn up costs one conversion instead of
+passing one through.
+
+**The ceiling has fourteen times the headroom it needs.** Measured on the same
+groups: the dearest thing that has executed is a 13-transaction swap paying
+71,000 microALGO, and the three convert groups pay 43,000, 60,000 and 43,000.
+None carries a close or a rekey, which is what the guard asserts.
+
+**It found something on the way in.** The example suite's "a conversion goes
+through the quote-signed path" passed `[CLOSE_TO_SELF]` as its group — a
+stand-in chosen because the path did not look at it. The new rule looked, and
+refused it. The test now uses a real convert group; a test whose fixture the
+production rule rejects was proving less than it appeared to.
+
+**The related hang is closed too.** `CREATOR_LOOKUP_TIMEOUT` bounds the `S2`
+creator lookup at ten seconds and resolves to `null` on expiry, so a node that
+never answers joins the unreachable node and the unreadable asset instead of
+leaving the reader on a spinner with no prompt and no error. algosdk v3's
+client sets no timeout of its own; this was the one failure on that path that
+neither refused nor accepted.
+
+Ten checks in [verify-sweep.sh](../verification/verify-sweep.sh) cover this
+section. They asserted the gap while the finding was open and assert the fix
+now.
