@@ -11,7 +11,7 @@ own. For the contract, read [REPORT.md](REPORT.md).
   `router/sweep.py`, `router/selection.py`, `engine/core/sweep.py`, and the
   wallet bridge's `signAndSend`
 - **Verification:** [verification/verify-sweep.sh](verification/verify-sweep.sh)
-  — 63 checks, all passing and **none skipped**: the two that need a node were
+  — 68 checks, all passing and **none skipped**: the two that need a node were
   run against mainnet over an SSH-forwarded algod; plus six sweep groups that executed on mainnet, in
   [evidence/](evidence/). Those groups are now a fixture in the widget's own
   suite as well: `S6`'s fix is a rule about router groups, so its accepting
@@ -47,7 +47,7 @@ read the rest with the same intent.
 | [`S5`](findings/S5-malformed-evaluation-raises.md) | Info | A malformed evaluation took the whole sweep down rather than degrading | **Fixed** |
 | [`S6`](findings/S6-convert-path-unchecked.md) | Medium | The conversion path is checked by nothing the engine does not choose | **Fixed** |
 | [`S7`](findings/S7-mirror-without-the-router.md) | Medium | The mirrored guard copied the cheap half and left the load-bearing one | **Fixed** |
-| [`S8`](findings/S8-transfer-alongside-a-route.md) | Medium | A hostile transfer rides alongside a genuine route call | **Open** |
+| [`S8`](findings/S8-transfer-alongside-a-route.md) | Medium | A hostile transfer rides alongside a genuine route call | **Open** — demonstrated against the shipped code |
 
 The four Medium ones share a precondition worth stating plainly: **none is
 reachable by an unprivileged remote attacker.** `S2`, `S3` and `S6` need the

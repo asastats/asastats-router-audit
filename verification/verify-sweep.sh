@@ -562,6 +562,73 @@ ESCROW
 )"
 fi
 
+# **The finding demonstrated, not described.** A conversion that executed on
+# mainnet, plus one axfer moving an asset the sweep never mentioned to an
+# address of the attacker's choosing. Both must be accepted for the finding to
+# be true; the day the second one is refused, S8 is closed and this check is
+# what says so.
+FIXTURE="${WIDGETS}/inhouse/dustsweep/tests/javascript/mainnet-groups.json"
+if [ -n "${HAVE_JS}" ] && [ -f "${FIXTURE}" ]; then
+    cat > "${WORK}/s8.js" <<S8
+global.atob = (b) => Buffer.from(b, "base64").toString("binary");
+const sweep = require("${WIDGET}");
+const groups = require("${FIXTURE}");
+
+// msgpack, in the fixmap/fixstr/bin8/uint subset the widget decodes
+function enc(obj) {
+  const keys = Object.keys(obj), parts = [Buffer.from([0x80 | keys.length])];
+  for (const k of keys) {
+    parts.push(Buffer.from([0xa0 | k.length]), Buffer.from(k, "binary"));
+    const v = obj[k];
+    if (typeof v === "string") {
+      parts.push(Buffer.from([0xa0 | v.length]), Buffer.from(v, "binary"));
+    } else if (Buffer.isBuffer(v)) {
+      parts.push(Buffer.from([0xc4, v.length]), v);
+    } else if (v < 0x80) {
+      parts.push(Buffer.from([v]));
+    } else {
+      const b = Buffer.alloc(5); b[0] = 0xce; b.writeUInt32BE(v, 1); parts.push(b);
+    }
+  }
+  return Buffer.concat(parts).toString("base64");
+}
+
+const hostile = enc({
+  amt: 4000000000,               // a whole balance
+  arcv: Buffer.alloc(32, 7),     // an address the attacker controls
+  fee: 1000,
+  snd: Buffer.alloc(32, 3),      // the swept account
+  type: "axfer",
+  xaid: 31566704,                // an asset this sweep never mentioned
+});
+
+const honest = groups.sweep_3_convert;
+const verdict = (g) => (sweep.routedGroupProblems(g, 3689591968).length ? "refused" : "accepted");
+console.log("s8.honest=" + verdict(honest));
+console.log("s8.attacked=" + verdict(honest.concat([hostile])));
+S8
+    if node "${WORK}/s8.js" > "${WORK}/s8.txt" 2>/dev/null; then
+        check "a genuine conversion is accepted" "accepted" \
+            "$(sed -n 's/^s8.honest=//p' "${WORK}/s8.txt")"
+        check "...and so is the same group carrying a hostile transfer" \
+            "accepted" "$(sed -n 's/^s8.attacked=//p' "${WORK}/s8.txt")"
+    else
+        skip "the S8 vector, demonstrated" "node could not run it"
+    fi
+else
+    skip "the S8 vector, demonstrated" "needs node and the mainnet-groups fixture"
+fi
+
+# Why the tempting fix - committing the group's shape in the co-signed note -
+# does not work: the engine holds the signing key in its own process, so an
+# engine that can build a hostile group can sign a note describing it.
+check "the quote signer key is read in the engine's own process" "2" \
+    "$(grep -c 'private_key = _private_key(' "${ENGINE}/core/quote_signer.py" 2>/dev/null; true)"
+check "...from a path on the engine's own host" "2" \
+    "$(grep -c 'signer_key_path(network)' "${ENGINE}/core/quote_signer.py" 2>/dev/null; true)"
+check "...and it validates group ids, not group composition" "0" \
+    "$(sed -n '/^def _validate_group/,/^def sign_quote_authorization/p' "${ENGINE}/core/quote_signer.py" 2>/dev/null | grep -c 'receiver\|amount'; true)"
+
 # The lookup that used to hang forever now refuses instead.
 check "a creator lookup that never answers times out" "1" \
     "$(grep -c 'var CREATOR_LOOKUP_TIMEOUT = ' "${WIDGET}")"

@@ -13,11 +13,14 @@ report `SKIP`; the run below had both, so nothing was skipped. Nothing is
 submitted — the chain cases use `simulate` with `allow-empty-signatures` and no
 key.
 
-**These assert the fixed behaviour.** The first revision of this script
-asserted the defects and passed 23 of 23, which was the finding. `S2`, `S3` and
-`S4` are all closed — and since 2026-08-30 `S3` is closed in the deployed
-contract too, not only in the source — so each check is now the regression test
-for one of them.
+**Most of these assert the fixed behaviour.** The first revision of this script
+asserted the defects and passed 23 of 23, which was the finding. `S2`–`S7` are
+closed, so each of those checks is now the regression test for one of them.
+
+**The `S8` section is the exception, and deliberately.** That finding is open,
+so its checks assert the gap: two of them run the vector against the shipped
+widget and require it to be **accepted**. The day a fix lands they fail, and
+that failure is how the finding gets closed rather than forgotten.
 
 **One check was itself wrong, and a second account is what found it.** The
 simulate that shows the chain bounding a fee only by the balance did not set
@@ -27,12 +30,12 @@ from the bound working. Fixed by carrying the account's `auth-addr` into the
 simulated signature. See [evidence/README.md §10](../evidence/README.md).
 
 ```
-router:   a6b9df6   (contract deployed as mainnet 3689591968 from 848a3a3)
+router:   68ad254   (contract deployed as mainnet 3689591968 from 848a3a3)
 engine:   1616efc
-frontend: f4643d7
-widgets:  79d2a92
+frontend: 0c8600b
+widgets:  4fe081b   (S6/S7 fixes merged to dust-sweep, not yet released)
 date:     2026-09-01
-network:  mainnet, account VW55KZ3N…K3CBSU (39.255847 ALGO, 11 empty holdings, rekeyed)
+network:  mainnet, account 2EVGZ4BG…GXNSIU
 ```
 
 ```
@@ -94,6 +97,41 @@ S5 — does a malformed payload degrade rather than raise?
   PASS  neither python reader raises on any shape                degrades
   PASS  neither browser check raises on any shape                degrades
 
+S6 — is the conversion path checked at all?
+-------------------------------------------------------------------------
+  PASS  signAction dispatches on the engine's own action.kind    1
+  PASS  ...and its convert branch no longer trusts it            1
+  PASS  the browser mirrors the contract's three hygiene fields  3
+  PASS  ...and the contract's group fee ceiling, by its number   1
+  PASS  which is the number the contract actually uses           1
+  PASS  a group that will not decode is refused, not skipped     2
+  PASS  the hygiene guard refuses closes, when it runs           2
+  PASS  signAndSendPartial checks quote placement and signatures 3
+
+S7 — does the conversion path require the checks to actually run?
+-------------------------------------------------------------------------
+  PASS  a conversion must call a router method that guards       1
+  PASS  the app id is page context, never the plan response      1
+  PASS  ...handed down by the view, not read from the engine     1
+  PASS  ...and the widget carries the same id as a fallback      2
+  PASS  which is the application the audit pins to mainnet       1
+  PASS  the exempt selectors are both excluded                   2
+  PASS  ...and they are the selectors the contract actually exposes ok
+
+S8 — what still gets through, and why the obvious rule cannot be it (OPEN)
+-------------------------------------------------------------------------
+  PASS  the route binds only the transaction before it           1
+  PASS  the hygiene guard reads no amount and no receiver        0
+  PASS  and the browser bounds no receiver either                0
+  PASS  a conversion that executed pays a non-router address     1
+  PASS  a genuine conversion is accepted                         accepted
+  PASS  ...and so is the same group carrying a hostile transfer  accepted
+  PASS  the quote signer key is read in the engine's own process 2
+  PASS  ...from a path on the engine's own host                  2
+  PASS  ...and it validates group ids, not group composition     0
+  PASS  a creator lookup that never answers times out            1
+  PASS  ...and a timeout resolves to null, so it joins the refusals 1
+
 context
 -------------------------------------------------------------------------
   PASS  the asset cache is consulted before the node by default  1
@@ -101,6 +139,6 @@ context
   PASS  unpriced is the only disposition that starts off         1
 
 -------------------------------------------------------------------------
-  42 passed, 0 failed, 0 skipped
+  68 passed, 0 failed, 0 skipped
 
 ```
