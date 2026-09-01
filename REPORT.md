@@ -23,7 +23,8 @@ reports — 38 mechanical checks, all passing, in
 transactions that executed, in
 [verification/GROUP-RESULTS.md](verification/GROUP-RESULTS.md).
 
-**This report raised two findings of its own, and both are closed.**
+**This report raised three findings of its own; two are closed and one is
+open.**
 [`S6`](findings/S6-convert-path-unchecked.md), Medium, off-chain, 2026-09-01:
 the dust sweep's conversion path ran no browser check on the group it signed,
 and the contract's hygiene guard could not stand in for one because a group
@@ -31,7 +32,15 @@ that never calls the contract never reaches it. Fixed by mirroring that guard
 in the browser — and then [`S7`](findings/S7-mirror-without-the-router.md),
 because that mirror copied the hygiene half of the guard, which is not the half
 that refuses a plain transfer to a stranger. Nothing in the contract changed
-for either. See §3.1 and §4.0.
+for either. Reviewing `S7` in turn produced
+[`S8`](findings/S8-transfer-alongside-a-route.md), which is **open**: a
+transfer added to an otherwise genuine routed group is examined by nothing,
+because `_input_amount` binds only the transaction immediately preceding the
+route and the hygiene guard never reads an amount or a receiver. It is not
+closable by a receiver whitelist on either side — a sweep legitimately pays
+pool escrows — so it stays open with partial mitigations rather than a fix that
+would look complete. Nothing in the contract changed for any of the three. See
+§3.1 and §4.0.
 
 **This is still not a clearance for unrestricted public deployment**, and the
 reason has nothing to do with the findings:
@@ -192,7 +201,7 @@ re-verified line by line; the table below is the summary, and
 | `M7` | Medium | MWPT asymmetric weight quoting drift | exact off-chain math |
 | `L1`–`L7`, `I1`–`I7` | Low / Info | see [findings/](findings/) | |
 
-### 4.0 The two this report raised, and how they closed
+### 4.0 The three this report raised, and where they stand
 
 [`S6`](findings/S6-convert-path-unchecked.md) — **Medium, off-chain, fixed.**
 Raised on 2026-09-01 by reviewing the fix for `S2`/`S3` rather than by doubting
@@ -220,6 +229,29 @@ the group to contain a call to a **guarded** entry point — not `pool_budget` o
 `verify_discount`, whose exemption in §3.1 exists precisely because hygiene
 alone was never the safety argument. The application id is handed down by the
 Django view rather than read from the plan.
+
+[`S8`](findings/S8-transfer-alongside-a-route.md) — **Medium, open.** `S7`
+makes a conversion group prove this contract is in it. Nothing makes it prove
+the group does nothing else, and `_input_amount` binds only the transaction
+immediately preceding the route:
+
+```python
+assert payment.group_index + 1 == Txn.group_index, (
+    "input must immediately precede the route"
+)
+```
+
+A transfer elsewhere in the group is not the route's input, is never examined,
+and executes on its own terms. The hygiene guard walks the whole group but
+reads only `rekey_to`, `close_remainder_to`, `asset_close_to` and `fee` — never
+an amount or a receiver.
+
+**It is left open deliberately.** The rule that would close it — the caller may
+only pay this application — refuses `sweep-6-convert` in [evidence/](evidence/),
+where a leg pays a pool escrow directly. That is a route shape the router uses
+on purpose, so neither this contract nor the browser can forbid the pattern
+without forbidding the product. The finding records two partial mitigations and
+is explicit that neither is a fix.
 
 ### 4.1 The one that was not closed, and now is
 

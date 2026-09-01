@@ -1,16 +1,26 @@
 # Findings
 
-31 in total across seven audits: 23 raised by v1–v5 and closed, one raised by
-the contract audit, and seven by the dust sweep audit.
+32 in total across seven audits: 23 raised by v1–v5 and closed, one raised by
+the contract audit, and eight by the dust sweep audit.
 
 ## Open
 
-**None.** All seven findings this audit raised are closed. The last two came
-from reviewing fixes rather than code: `S6` from reviewing `S2`/`S3`, and `S7`
-from reviewing `S6` — the mirror it added copied the contract's hygiene guard,
-which is not the half that refuses a transfer to a stranger.
+[`S8`](S8-transfer-alongside-a-route.md) — **a hostile transfer rides
+alongside a genuine route call.** `S7` made a conversion group prove the router
+is in it; nothing makes it prove the group does nothing else. The route
+validates only the transaction immediately preceding it, the hygiene guard
+never reads an amount or a receiver, and an extra transfer executes on its own
+terms. **Open, and not closable by the method that closed `S6` and `S7`**: a
+receiver whitelist refuses `sweep-6-convert`, a conversion that executed, because
+a sweep legitimately pays pool escrows the browser cannot enumerate. Two partial
+mitigations are recorded in that finding, and each is explicit about what it
+does not cover.
 
-Five of the seven are deployed. `S3`'s contract-side bound was the last of
+The other seven are closed. The last three came from reviewing fixes rather
+than code: `S6` from reviewing `S2`/`S3`, `S7` from reviewing `S6`, and `S8`
+from reviewing `S7`.
+
+Five of the eight are deployed. `S3`'s contract-side bound was the last of
 those to go live, on 2026-08-30, and mainnet `3689591968` carries
 `MAX_GROUP_FEE = 1_000_000`. The `S6` and `S7` fixes are in the widget and not
 yet released.
@@ -32,10 +42,11 @@ bound there is. See [`S3` §7](S3-unbounded-fee.md).
 | [`S5`](S5-malformed-evaluation-raises.md) | Info | A malformed evaluation took the whole sweep down rather than degrading | **Fixed** `cc9a4ff` / `d1365dc` |
 | [`S6`](S6-convert-path-unchecked.md) | Medium | The conversion path is checked by nothing the engine does not choose | **Fixed** |
 | [`S7`](S7-mirror-without-the-router.md) | Medium | The mirrored guard copied the cheap half and left the load-bearing one | **Fixed** |
+| [`S8`](S8-transfer-alongside-a-route.md) | Medium | A hostile transfer rides alongside a genuine route call | **Open** |
 
-None was reachable by an unprivileged remote attacker: `S2`, `S3`, `S6` and
-`S7` need the engine's response to be wrong, and `S4` needed only a wrong
-price. Each of those five is rated Medium because it defeated a control built
+None was reachable by an unprivileged remote attacker: `S2`, `S3`, `S6`, `S7`
+and `S8` need the engine's response to be wrong, and `S4` needed only a wrong
+price. Each of those six is rated Medium because it defeated a control built
 specifically to hold under those conditions, and because the value each exposed
 was unbounded.
 

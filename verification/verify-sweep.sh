@@ -523,6 +523,45 @@ SEL
 check "...and they are the selectors the contract actually exposes" "ok" \
     "$("${PYTHON}" "${WORK}/selectors.py" "${WIDGET}" 2>/dev/null || echo unknown)"
 
+echo
+echo "S8 — what still gets through, and why the obvious rule cannot be it (OPEN)"
+echo "-------------------------------------------------------------------------"
+# Pins an OPEN finding: these assert the gap and the reason it is not closed.
+# Invert them only if a complete fix lands.
+
+check "the route binds only the transaction before it" "1" \
+    "$(grep -c 'input must immediately precede the route' "${CONTRACT}")"
+check "the hygiene guard reads no amount and no receiver" "0" \
+    "$(sed -n '/def _assert_group_is_clean/,/def _signed_floor/p' "${CONTRACT}" | grep -c 'asset_amount\|asset_receiver')"
+check "and the browser bounds no receiver either" "0" \
+    "$(sed -n '/^function routedGroupProblems/,/^}/p' "${WIDGET}" | grep -c 'arcv\|rcv')"
+
+# The reason a receiver whitelist is not the fix: a real conversion pays an
+# address that is neither the router nor derivable from the group.
+if [ -d "${HERE}/../evidence/groups" ]; then
+    check "a conversion that executed pays a non-router address" "1" \
+        "$("${PYTHON}" - "${HERE}/../evidence/groups/sweep-6-convert.json" <<'ESCROW'
+import json, sys
+router = "GV27MIISIGA7GV2EHG2TM5K423VRQKQXVBXLS7WNR2IAZ73AGTEEBPMUEU"
+dec, text, i, out = json.JSONDecoder(), open(sys.argv[1]).read(), 0, []
+while i < len(text):
+    while i < len(text) and text[i].isspace():
+        i += 1
+    if i >= len(text):
+        break
+    obj, i = dec.raw_decode(text, i)
+    out.append(obj["transaction"])
+others = {
+    t["asset-transfer-transaction"]["receiver"]
+    for t in out
+    if t["tx-type"] == "axfer"
+    and t["asset-transfer-transaction"]["receiver"] != router
+}
+print(len(others))
+ESCROW
+)"
+fi
+
 # The lookup that used to hang forever now refuses instead.
 check "a creator lookup that never answers times out" "1" \
     "$(grep -c 'var CREATOR_LOOKUP_TIMEOUT = ' "${WIDGET}")"
