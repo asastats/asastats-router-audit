@@ -57,11 +57,11 @@ warning; it is what makes it load-bearing.** See [DISCLAIMER.md](DISCLAIMER.md).
 
 ## Check it yourself
 
-Every factual claim in the reports is a command. 132 of them:
+Every factual claim in the reports is a command. 134 of them:
 
 ```bash
 cd verification
-ROUTER=/path/to/router ./verify.sh              # the contract, from source — 36
+ROUTER=/path/to/router ./verify.sh              # the contract, from source — 38
 ROUTER=/path/to/router ./verify-sweep.sh        # the dust sweep — 42
 python3 verify-groups.py                        # what the chain did — 54
 ```
@@ -99,7 +99,7 @@ what was deliberately left unchecked.
 | | |
 |---|---|
 | source | `router/contracts/router_app.py`, 2,391 lines of Algorand Python |
-| compiled | 4,699 lines of TEAL v11, PuyaPy 5.9.0 |
+| compiled | 4,768 lines of TEAL v11, PuyaPy 5.9.0 — `f568200e…c8aa4`, [swept clean](tools/tealer.md) and matching the deployment manifest |
 | mainnet | [`3689591968`](https://allo.info/application/3689591968) — **unrestricted**, 5 bps, deployed 2026-08-30 from `848a3a3` |
 | testnet | `770729651` — unrestricted, 0 bps |
 | retired | `3688554446` (mainnet) and `770123816` (testnet), both destroyed |

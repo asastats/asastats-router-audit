@@ -18,7 +18,7 @@ what that is worth and what it is not.
 **No critical or high-severity vulnerability was found in the contract.** The
 23 findings raised by the five previous audits are closed, and each mitigation
 was re-derived from the source rather than carried forward from the earlier
-reports — 36 mechanical checks, all passing, in
+reports — 38 mechanical checks, all passing, in
 [verification/RESULTS.md](verification/RESULTS.md), and 54 more against
 transactions that executed, in
 [verification/GROUP-RESULTS.md](verification/GROUP-RESULTS.md).
@@ -248,12 +248,16 @@ Stated plainly, because an audit's silences are where the risk lives.
 
 ## 6. Static analysis
 
-Tealer, 4,681 TEAL lines, revision `75087b8` — run before `3688554446` was
-deployed. `S3`'s fee bound has since taken the program to 4,699 lines and
-`3689591968` is what runs now; the sweep has not been repeated against that
-build, so this section describes the predecessor's program and is flagged as
-such rather than carried forward silently. Detail in
-[tools/tealer.md](tools/tealer.md).
+Tealer 0.1.2, every detector, **4,768 TEAL lines**, revision `a6b9df6`, swept
+2026-09-01. Detail in [tools/tealer.md](tools/tealer.md).
+
+**The swept program is the deployed program**, which has not been true before
+in this series. The sweep compiles with `RESTRICT_TO_ADMIN = 0` deliberately —
+the unrestricted build is the superset — and until 2026-08-30 mainnet ran the
+restricted one, so the two could only be compared by argument. They now hash
+the same: `f568200e…c8aa4`, matching `approval_teal_sha256` in
+`router-mainnet-3689591968.json`, with `verify_deployment.py` exiting 0 against
+the deployed application. `verify.sh` checks that hash.
 
 | detector | result | reading |
 |---|---|---|
@@ -269,6 +273,14 @@ The two HIGH results were re-proven against this build rather than inherited:
 something that cannot happen. The single `RekeyTo` in the program is a *read*
 inside `_assert_group_is_clean`, not a set.
 
+**Nothing moved against the previous sweep**, and that is the result rather
+than an absence of one. `set_paused`, the group fee bound and the two setter
+guards added 87 TEAL lines on the path every routed group takes; diffed
+detector for detector against `75087b8`, nine of fourteen logs are byte
+identical and the other five differ only in block numbering — 252 basic blocks
+to 254, 52 dynamic group accesses to 53. **No detector changed its verdict or
+its count.**
+
 ---
 
 ## 7. Reproducing this
@@ -277,7 +289,7 @@ inside `_assert_group_is_clean`, not a set.
 git clone <this repository>
 cd asastats-router-audit/verification
 
-ROUTER=/path/to/router ./verify.sh   # 36 checks against the source
+ROUTER=/path/to/router ./verify.sh   # 38 checks against the source
 python3 verify-groups.py             # 50 more against what executed
 ```
 

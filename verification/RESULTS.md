@@ -11,11 +11,15 @@ The last section reads `router/build/releases/router-mainnet-3689591968.json`
 errors that did this series the most damage are answered by that file, and
 neither audit that made them opened it.
 
+Its last two checks compare the Tealer-swept program against that manifest by
+hash. They report `SKIP` until `bash scripts/tealer.sh` has been run in the
+router checkout, since that is what produces the file they read.
+
 ```
 router:   <router-checkout>
 revision: a6b9df6
 tree:     2 file(s) modified
-date:     2026-09-01 08:27:00Z
+date:     2026-09-01 09:34:26Z
 
 == C1  convert_and_distribute is admin-only and reads its pool from state ==
   PASS  admin assertion exists                                     12 occurrence(s)
@@ -60,6 +64,8 @@ date:     2026-09-01 08:27:00Z
   PASS  the pause exists in the source                             1
   PASS  and both route entry points honour it                      2
   PASS  the group fee ceiling                                      1
+  PASS  the swept program is the deployed program                  f568200e72799fb8ef043e2433d5d6d09bc2162296a2d1e959ff329c97cc8aa4
+  PASS  and it is 4,768 TEAL lines                                 4768
 
 == admin bounds ==
   PASS  fee ceiling is 100 bps                                     1
@@ -75,7 +81,7 @@ date:     2026-09-01 08:27:00Z
   note  tests collected: 999
   note  tests/test_sweep.py collects: 140  (audit v5 claimed 982)
 
-passed 36, failed 0
+passed 38, failed 0
 ```
 
 ## What is deliberately not in here
@@ -86,4 +92,5 @@ the router in one command. The claims that need a running system live in
 [verify-groups.py](verify-groups.py) and its recorded output,
 [GROUP-RESULTS.md](GROUP-RESULTS.md); the claims that need the sweep's
 off-chain estate live in [verify-sweep.sh](verify-sweep.sh) and
-[SWEEP-RESULTS.md](SWEEP-RESULTS.md).
+[SWEEP-RESULTS.md](SWEEP-RESULTS.md); the static analysis is in
+[tools/tealer.md](../tools/tealer.md).

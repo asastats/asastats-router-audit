@@ -1,17 +1,18 @@
-revision  75087b8
+revision  a6b9df6
 tree      2 file(s) modified
-started   2026-08-29 15:17:26Z
+started   2026-09-01 09:22:30Z
+program   4,768 TEAL lines, sha256 f568200e…c8aa4 — byte-for-byte the deployed 3689591968
 
 == compiling with mainnet template values ==
-[32minfo: [0musing puyapy version 5.9.0[0m
-[33mwarning: [0mcannot determine package root for contracts/router_app.py[0m
-[32minfo: [0musing python search path: ['/home/ipaleka/dev/venvs/frontend/lib/python3.13/site-packages'][0m
-[32minfo: [0mWriting build/tealer/Router.arc56.json[0m
-[32minfo: [0mWriting build/tealer/Router.approval.teal[0m
-[32minfo: [0mWriting build/tealer/Router.clear.teal[0m
-[32minfo: [0mWriting build/tealer/Router.approval.puya.map[0m
-[32minfo: [0mWriting build/tealer/Router.clear.puya.map[0m
-substituted; 4681 lines
+info: using puyapy version 5.9.0
+warning: cannot determine package root for contracts/router_app.py
+info: using python search path: ['/home/ipaleka/dev/venvs/backend/lib/python3.12/site-packages']
+info: Writing build/tealer/Router.arc56.json
+info: Writing build/tealer/Router.approval.teal
+info: Writing build/tealer/Router.clear.teal
+info: Writing build/tealer/Router.approval.puya.map
+info: Writing build/tealer/Router.clear.puya.map
+substituted; 4768 lines
 == unprotected-updatable ==
    impact:   HIGH
    status:   9 results
@@ -33,22 +34,22 @@ substituted; 4681 lines
    
    Static vacuousness proof (reuses tealer's parser and predicate;
    no path enumeration, runs in milliseconds):
-     basic blocks: 252
+     basic blocks: 254
      absolute group-access blocks: 0
-     dynamic group accesses (gtxns/gtxnsa/gtxnsas): 52
+     dynamic group accesses (gtxns/gtxnsa/gtxnsas): 53
      => group-size-check cannot report: every group access is dynamic
         (index = Txn.group_index + offset), so its report predicate is
         false on every path. Vacuous, not clean.
    
    GroupSize guard sites (8 reads):
-     teal 548: contracts/router_app.py:975
-     teal 1588: contracts/router_app.py:1036
-     teal 1942: contracts/router_app.py:756
-     teal 2015: contracts/router_app.py:819
-     teal 2042: contracts/router_app.py:826
-     teal 2170: contracts/router_app.py:858
-     teal 2478: contracts/router_app.py:1012
-     teal 4190: contracts/router_app.py:1849
+     teal 591: contracts/router_app.py:1055
+     teal 1657: contracts/router_app.py:1116
+     teal 2011: contracts/router_app.py:833
+     teal 2102: contracts/router_app.py:899
+     teal 2129: contracts/router_app.py:906
+     teal 2257: contracts/router_app.py:938
+     teal 2565: contracts/router_app.py:1092
+     teal 4277: contracts/router_app.py:1929
    
    Auditor note: verify, at each dynamic site, that the relative index
    is provably in [0, GroupSize). The guards above are where that is
@@ -73,8 +74,8 @@ substituted; 4681 lines
    
    This detector is NOT vacuous: the per-block dataflow (no path
    search) shows the predicate genuinely fires:
-     basic blocks: 252
-     blocks where UpdateApplication is a possible type: 246
+     basic blocks: 254
+     blocks where UpdateApplication is a possible type: 248
      'UpdateApplication' mentioned in the program: 0 times
    
    But approving an UpdateApplication transaction cannot change this
@@ -94,8 +95,8 @@ substituted; 4681 lines
    
    This detector is NOT vacuous: the per-block dataflow (no path
    search) shows the predicate genuinely fires:
-     basic blocks: 252
-     blocks where DeleteApplication is a possible type: 246
+     basic blocks: 254
+     blocks where DeleteApplication is a possible type: 248
      'DeleteApplication' mentioned in the program: 3 times
    
    This one is a real finding and it is deliberate: delete_application
@@ -119,8 +120,5 @@ substituted; 4681 lines
    impact:   HIGH
    status:   0 results
 
-Done. Logs in <router-checkout>/build/tealer/detect-*.log
-Total: 1016K	<router-checkout>/build/tealer
-
-finished  2026-08-29 15:17:40Z
-approval  1761d970954e4d7e (4681 lines)
+Done. Logs in /home/ipaleka/claude/router/build/tealer/detect-*.log
+Total: 1.1M	/home/ipaleka/claude/router/build/tealer

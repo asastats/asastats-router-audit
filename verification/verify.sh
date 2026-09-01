@@ -130,6 +130,20 @@ if [ -f "${MANIFEST}" ]; then
           "$(grep -c 'assert not self.paused' "${CONTRACT}")"
     check "the group fee ceiling"              "1" \
           "$(grep -cE '^MAX_GROUP_FEE = 1_000_000$' "${CONTRACT}")"
+
+    # The strongest claim in this repository, and the cheapest to check: the
+    # program Tealer swept is the program mainnet runs. Every earlier sweep
+    # analysed the unrestricted build while mainnet ran the restricted one, so
+    # the two could not be compared by hash. Since 2026-08-30 they can.
+    SWEPT="${ROUTER}/build/tealer/Router.approval.teal"
+    if [ -f "${SWEPT}" ]; then
+        check "the swept program is the deployed program" \
+              "$(field . "['approval_teal_sha256']")" \
+              "$(sha256sum "${SWEPT}" | cut -d' ' -f1)"
+        check "and it is 4,768 TEAL lines" "4768" "$(wc -l < "${SWEPT}")"
+    else
+        echo "  SKIP  the swept program is the deployed program           run scripts/tealer.sh first"
+    fi
 else
     echo "  SKIP  mainnet manifest                                      not at ${MANIFEST}"
 fi

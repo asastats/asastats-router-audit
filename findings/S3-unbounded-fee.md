@@ -173,7 +173,9 @@ stops clearing it.
 
 `_assert_group_is_clean` already walks the group, so the addition is one
 `+=` per transaction and one comparison at the end — cheaper than the
-per-transaction alternative. Compiled: 4,681 → 4,699 lines of TEAL.
+per-transaction alternative. Compiled: 4,681 -> 4,699 lines of TEAL — this
+commit's own cost; the deployed program is 4,768 lines once `set_paused` and
+the two setter guards are counted too.
 
 `TestSplitWidthIsBoundedByTheGroupNotTheBudget` is the test whose docstring
 warned that "another group scan on the route path would eat into it, and the
