@@ -16,6 +16,40 @@ manufacture a diff** for the parts that are not.
 
 ---
 
+## Start here — one run, and what to ask it
+
+If you do exactly one of these, do this one. The branch is already built:
+
+```sh
+cd frontend/website/widgets
+git diff --stat dust-sweep...review/S2-forfeit-and-fee   # 2 files, +357 -7
+git worktree add ../../../review-S2 review/S2-forfeit-and-fee
+cd ../../../review-S2
+/code-review ultra
+```
+
+`0be86c7` is the browser control that decides **where a user's tokens go**. It
+is 148 lines of production JavaScript and 216 of tests, off-chain — so anything
+found is fixable without a redeploy — and it contains the two fail-closed
+branches, which are the hardest thing in the estate to test and the easiest to
+get backwards. A control that refuses when it should refuse and also refuses
+when it should not is indistinguishable from a working one in every test that
+exists.
+
+Say what you want looked at, in the prompt, rather than letting it pick:
+
+> This is the fix for two audit findings. `S2`: the forfeit destination used to
+> be compared against `holdings[].creator` from the same HTTP response as the
+> bytes being checked, so an engine that set both consistently could send a
+> user's tokens anywhere; it now resolves the creator from the chain. `S3`: the
+> fee on a close-out was inspected by nothing. Concentrate on the paths where
+> the chain lookup fails or is unavailable — I want to know whether every one
+> of them refuses, and whether any of them can be made to accept.
+
+**Then stop and read what comes back before running a second one.** The point
+of the first run is as much to calibrate what this reviewer is worth on this
+codebase as it is to find something.
+
 ## Part 1 — what is already a diff, in priority order
 
 ### 1. The fixes this audit produced
@@ -43,15 +77,34 @@ missing, on the artefacts where its absence is documented.
 | `S4` | `engine` | `9320ae2` Carry the evaluation's own value onto each holding |
 | `S5` | `router` `widgets` | `cc9a4ff` / `d1365dc` Property tests, and the defect they found |
 
-Each is a separate repository, so each is a separate run:
+Each is a separate repository, so each is a separate run.
+
+**Branching *at* the fix does not work, and this was wrong in the first draft
+of this document.** Every one of those commits is already an ancestor of its
+branch tip, so `git checkout -b review/S1 1c128f2` lands you *behind* HEAD:
+the merge-base with the working branch is the fix itself, and the review sees
+an empty diff. Checked, not assumed — `git merge-base --is-ancestor` says
+ancestor for all seven.
+
+What works is branching at the fix's **parent** and cherry-picking the fix onto
+it. That makes a commit that is not reachable from the working branch, so the
+merge-base is the parent and the three-dot diff is exactly the fix:
 
 ```sh
-cd router && git checkout -b review/S1 1c128f2
-/code-review ultra
+cd frontend/website/widgets
+git worktree add -b review/S2 ../../../review-S2 0be86c7^   # branch at the parent
+git -C ../../../review-S2 cherry-pick -x 0be86c7            # replay the fix on top
+git diff --stat dust-sweep...review/S2                      # confirm before spending
+cd ../../../review-S2 && /code-review ultra
 ```
 
-Reviewing a branch whose tip is the fix gives the reviewer the fix as the diff
-and everything around it as context, which is the shape it is built for.
+The `git diff --stat` line is the check worth running every time: if it does not
+show the fix's own file list and line counts, the review will not either. A
+worktree keeps the working branch checked out where it is, which matters when
+the review is going to take a while.
+
+Reviewing a branch built this way gives the reviewer the fix as the diff and the
+whole repository around it as context, which is the shape it is built for.
 
 **Ask specifically about the fail-closed branches.** `S2`'s chain comparison
 and its "cannot read the asset" path are the two places where getting the
