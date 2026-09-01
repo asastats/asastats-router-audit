@@ -311,13 +311,34 @@ Stated plainly, because an audit's silences are where the risk lives.
   to behave as their interfaces describe. The router's defence against them
   misbehaving is the measured delta and the floor, not an understanding of
   their code.
-- **No key-management or operational review.** Admin key custody, signer
-  rotation and deployment procedure are out of scope. That exclusion has now
-  cost something measurable — an unnecessary mainnet redeploy, a conversion
-  pool set wrong and corrected on chain, and a README step order that fails
-  when followed — so it is the first thing
-  [methodology/ultrareview.md](methodology/ultrareview.md) proposes spending a
-  deeper review on.
+- **No key-management review.** Admin key custody and signer rotation remain
+  out of scope.
+
+  **The deployment procedure no longer is.** It was excluded by all seven
+  audits, and the exclusion had cost something measurable — an unnecessary
+  mainnet redeploy, a conversion pool set wrong and corrected on chain, and a
+  README step order that fails when followed — so it was the first thing
+  [methodology/ultrareview.md](methodology/ultrareview.md) proposed spending a
+  deeper review on. That review ran on 2026-09-01 and found **five ordering
+  gaps**, every one of them a guard that existed as prose, as an optional flag,
+  or aimed at a slightly different question than the one that mattered:
+
+  | | |
+  |---|---|
+  | 1 | `verify_deployment` did not compare the manifest's application id against `router/deployments.py`, so a rollout that skipped step 3 configured the predecessor and verified the replacement — and every step reported success |
+  | 2 | `retire.py` guarded the *network* but not the application id, which is the argument that gets mistyped; `blockers()` passes on a fresh replacement and refuses the predecessor, so it stopped the right target and let the wrong one through |
+  | 3 | `DEPLOYER_RESERVE` was a flat 150,000 and ignored what the create itself costs — 635,500 for this schema — so a deployer funded to exactly what the check asked for cleared the create and fell short on the payment, leaving an application that exists and can route nothing |
+  | 4 | the fee, quote signer and conversion pool were verified only when the operator passed the matching flag, which the README's step 7 did not |
+  | 5 | the identical-redeploy check lived in the README's prose, where it was skipped once at the cost of a mainnet application |
+
+  Fixed in `96da3d9`. The reserve formula in (3) was confirmed against the live
+  mainnet deployer: 100,000 + 7×100,000 + 635,500 = 1,435,500, which is exactly
+  what algod reports for that account.
+
+  None of these is a contract finding and none has an `S`-number: they cannot
+  move value on chain, and grading them beside `S2` or `S8` would misrepresent
+  both. What they can do is produce a deployment that is wrong in a way nobody
+  notices, which is how `3688554446` happened.
 - **No live adversarial testing** against mainnet. The groups in
   [evidence/](evidence/) are a trace of successful operation. **They cannot
   show that a control fired**, only that nothing needed it to: no group there

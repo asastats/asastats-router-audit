@@ -159,6 +159,25 @@ of which any of the six audits looked at because "deployment operations" is
 out of scope in all of them. It is the highest ratio of real-cost to
 attention in the estate.
 
+**Run on 2026-09-01. It found five ordering gaps**, listed in
+[REPORT §5](../REPORT.md) and fixed in `96da3d9`. The shape was the same every
+time: a guard that existed, but as prose, as an optional flag, or aimed at a
+slightly different question than the one that mattered — put in front of the
+irreversible step and made non-optional. Two of the five map onto incidents
+that had already happened.
+
+Worth recording for anyone planning the next one: the review's own commit
+landed on the scaffolding branch, stacked on the two throwaway commits that
+manufactured the diff. Cherry-pick it onto the real branch rather than merging,
+or the scaffolding travels with it. The tree at the scaffold's tip is identical
+to the branch it was built from, so the pick is clean.
+
+And run the whole suite afterwards, not just the touched area. This one came
+back with four failures: three were `TestDiscountVoucher`, flaky on unmodified
+code, and the fourth was a property test failing on seed luck rather than on a
+counterexample — a real defect in the audit's own test suite, and one nothing in
+the review's scope would have surfaced.
+
 ```sh
 cd router && git checkout -b review/deploy a6d7843~1
 git checkout a6b9df6 -- scripts/ README.md docs/production-rollout.md
