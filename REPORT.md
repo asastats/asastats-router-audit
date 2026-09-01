@@ -23,6 +23,13 @@ reports — 38 mechanical checks, all passing, in
 transactions that executed, in
 [verification/GROUP-RESULTS.md](verification/GROUP-RESULTS.md).
 
+**One finding is open, and it is off-chain.**
+[`S6`](findings/S6-convert-path-unchecked.md), Medium, raised 2026-09-01: the
+dust sweep's conversion path runs no browser check on the group it signs, and
+the contract's hygiene guard cannot stand in for one because a group that never
+calls the contract never reaches it. Nothing in the contract needs to change
+for it. See §3.1 and §4.0.
+
 **This is still not a clearance for unrestricted public deployment**, and the
 reason has nothing to do with the findings:
 
@@ -135,12 +142,25 @@ own docstring gives the reason a second sweep would be actively harmful: it
 would spend part of the very allowance the call exists to add.
 
 The property that makes this sound is atomicity. Any group that *does*
-anything runs `route`, `route3` or an admin method, and each of those asserts
-hygiene over the **whole group** — so a rekey sitting beside a `pool_budget`
-call is refused by the route, and a group with no route does nothing worth
-protecting. Verified: 15 entry points, 13 in-body guards, and the guard checks
-`rekey_to`, `close_remainder_to` and `asset_close_to` against the zero address,
-plus the group's total fee against `MAX_GROUP_FEE`.
+anything **through this contract** runs `route`, `route3` or an admin method,
+and each of those asserts hygiene over the **whole group** — so a rekey sitting
+beside a `pool_budget` call is refused by the route. Verified: 15 entry points,
+13 in-body guards, and the guard checks `rekey_to`, `close_remainder_to` and
+`asset_close_to` against the zero address, plus the group's total fee against
+`MAX_GROUP_FEE`.
+
+**The qualifier matters, and a later review found where.** "A group with no
+route does nothing worth protecting" is true of this contract's own float. It
+is not true of the signer's account, which is what the guard exists to defend —
+a group with no application call at all can still carry a close-out or a rekey
+the user signs. The contract cannot refuse a group it is not in. That is the
+stated reason the dust sweep's close-out path needed a browser control of its
+own, and [`S6`](findings/S6-convert-path-unchecked.md) is the discovery that
+the sweep's **conversion** path has neither: `signAction` decides whether to
+run the browser check by reading `action.kind` from the engine's own response,
+and takes an unchecked branch for `convert`. Off-chain, and not a contract
+defect — but it is the case this section's reasoning did not cover, and it is
+recorded here so the next reader does not re-derive the same comfort.
 
 The seven groups in [evidence/](evidence/) show the separation this forces:
 none of the four carrying a router call contains a top-level `asset_close_to`,
@@ -167,6 +187,17 @@ re-verified line by line; the table below is the summary, and
 | `M6` | Medium | conversion pool could be approved and used in one group | `_assert_no_conversion_pool_approval` |
 | `M7` | Medium | MWPT asymmetric weight quoting drift | exact off-chain math |
 | `L1`–`L7`, `I1`–`I7` | Low / Info | see [findings/](findings/) | |
+
+### 4.0 The one still open
+
+[`S6`](findings/S6-convert-path-unchecked.md) — **Medium, off-chain, open.**
+Raised on 2026-09-01 by reviewing the fix for `S2`/`S3` rather than by doubting
+it: that fix is sound on the path it covers, and the wallet bridge's
+`assetCreator` genuinely resolves a forfeit destination from algod and fails
+closed on every way the lookup can fail. What the review found sits one level
+up, in which branch runs at all. See §3.1 for why the contract's own hygiene
+guard does not close it, and [`SWEEP-REPORT.md`](SWEEP-REPORT.md) for the
+subsystem it belongs to.
 
 ### 4.1 The one that was not closed, and now is
 
