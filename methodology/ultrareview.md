@@ -25,8 +25,29 @@ cd frontend/website/widgets
 git diff --stat dust-sweep...review/S2-forfeit-and-fee   # 2 files, +357 -7
 git worktree add ../../../review-S2 review/S2-forfeit-and-fee
 cd ../../../review-S2
-/code-review ultra
+claude
+/code-review ultra dust-sweep      # NAME THE BASE. see below
 ```
+
+**Naming the base is not optional here.** With no argument the command compares
+against the repository's default branch, and `dust-sweep` is unmerged — so the
+merge-base falls back to `c3f9eef` and the "review" becomes the whole feature
+branch:
+
+```
+base main         22 files, 8,732 lines   REFUSED: over the 8,000-line limit
+                  largest: inhouse/dustsweep/package-lock.json (5,022 lines)
+base dust-sweep    2 files,   364 lines   the fix
+```
+
+That refusal is the cheap outcome. The expensive one is a base that is wrong
+but *under* the limit, which buys a shallow read of eight thousand lines
+instead of a deep one of three hundred, and looks like a review either way.
+
+**So the rule for every target below: work out the base first, pass it
+explicitly, and confirm the file list before approving.** `git diff --stat
+<base>...<branch>` is the same check in one command, and it is the only thing
+standing between you and paying for the wrong diff.
 
 `0be86c7` is the browser control that decides **where a user's tokens go**. It
 is 148 lines of production JavaScript and 216 of tests, off-chain — so anything
@@ -95,12 +116,20 @@ cd frontend/website/widgets
 git worktree add -b review/S2 ../../../review-S2 0be86c7^   # branch at the parent
 git -C ../../../review-S2 cherry-pick -x 0be86c7            # replay the fix on top
 git diff --stat dust-sweep...review/S2                      # confirm before spending
-cd ../../../review-S2 && /code-review ultra
+cd ../../../review-S2 && claude
+/code-review ultra dust-sweep                               # name the base
 ```
 
-The `git diff --stat` line is the check worth running every time: if it does not
-show the fix's own file list and line counts, the review will not either. A
-worktree keeps the working branch checked out where it is, which matters when
+Two checks worth running every time, because each has already caught a mistake
+that would otherwise have been paid for:
+
+- **`git diff --stat <base>...<branch>`.** If it does not show the fix's own
+  file list and line counts, the review will not either.
+- **The base argument.** With none, the command uses the repository's default
+  branch, which on an unmerged feature branch is not what you want. See the
+  numbers under "Start here".
+
+A worktree keeps the working branch checked out where it is, which matters when
 the review is going to take a while.
 
 Reviewing a branch built this way gives the reviewer the fix as the diff and the
