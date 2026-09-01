@@ -165,6 +165,14 @@ the widget and the wallet bundle must ship together, or every forfeit is
 refused until the bundle catches up. Empty holdings — where most of what a
 sweep recovers is — are unaffected.
 
-Recommendation 2 (showing the destination in the row) was **not** done. It is
-still worth doing, but it is now a readability improvement rather than a
-control, and it trades screen space for a 58-character address on every line.
+Recommendation 2 (showing the destination in the row) was **not** done at
+first, on the grounds that it traded screen space for a 58-character address on
+every line. It is done now: `destinationLabel` renders `to STATS6…4PK2Q` on a
+forfeit with the whole address in the element's title, and `stays in this
+account` on a close - because a blank cell there reads as a missing fact rather
+than as reassurance. The decision is a pure function and tested; `renderLine`
+only appends what it returns.
+
+It remains a complement rather than a control. What refuses a wrong destination
+is the chain lookup above; this is what lets a reader do their own comparing
+against the wallet prompt instead of trusting two systems.

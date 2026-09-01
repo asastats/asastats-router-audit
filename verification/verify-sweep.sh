@@ -452,7 +452,7 @@ echo "-------------------------------------------------------------------------"
 check "signAction dispatches on the engine's own action.kind" "1" \
     "$(sed -n '/^async function signAction/,/^}/p' "${WIDGET}" | grep -c 'if (action.kind === "convert") {')"
 check "...and its convert branch no longer trusts it" "1" \
-    "$(sed -n '/if (action.kind === "convert") {/,/^  }/p' "${WIDGET}" | grep -c 'routedGroupProblems(action.transactions)')"
+    "$(sed -n '/if (action.kind === "convert") {/,/^  }/p' "${WIDGET}" | grep -c 'routedGroupProblems(action.transactions, routerApp)')"
 check "the browser mirrors the contract's three hygiene fields" "3" \
     "$(sed -n '/^function routedGroupProblems/,/^}/p' "${WIDGET}" | grep -c 'txn.rekey\|txn.close\|txn.aclose')"
 check "...and the contract's group fee ceiling, by its number" "1" \
@@ -473,6 +473,55 @@ if [ -f "${SWAPBRIDGE}" ]; then
 else
     skip "the bridge's partial-group checks" "set SWAPBRIDGE=/path/to/swapBridge.ts"
 fi
+
+echo
+echo "S7 — does the conversion path require the checks to actually run?"
+echo "-------------------------------------------------------------------------"
+# Mirroring the hygiene guard was not enough: hygiene is not what a transfer to
+# a stranger violates. What refuses that is the router's own logic, and it runs
+# only when the router is called.
+
+check "a conversion must call a router method that guards" "1" \
+    "$(sed -n '/^function routedGroupProblems/,/^}/p' "${WIDGET}" | grep -c 'calls no router method')"
+check "the app id is page context, never the plan response" "1" \
+    "$(grep -c 'data-router-app="{{ router_app_id }}"' "${WIDGETS}/inhouse/dustsweep/templates/dustsweep/index.html")"
+check "...handed down by the view, not read from the engine" "1" \
+    "$(grep -c 'context\["router_app_id"\] = getattr(settings, "ROUTER_APP_ID", ROUTER_APP_ID)' "${WIDGETS}/inhouse/dustsweep/views.py")"
+check "...and the widget carries the same id as a fallback" "2" \
+    "$(cat "${WIDGET}" "${WIDGETS}/inhouse/dustsweep/views.py" | grep -c '3689591968')"
+check "which is the application the audit pins to mainnet" "1" \
+    "$(grep -c '^Deployments.*3689591968\|mainnet .3689591968' "${HERE}/../REPORT.md")"
+
+# The two entry points that skip the contract's guard cannot count as "called".
+check "the exempt selectors are both excluded" "2" \
+    "$(sed -n '/^var BUDGET_ONLY_SELECTORS/,/^];/p' "${WIDGET}" | grep -c '0x')"
+cat > "${WORK}/selectors.py" <<'SEL'
+"""Are the two excluded selectors the ones the contract actually exposes?
+
+Hardcoding four bytes is fine; hardcoding the wrong four bytes silently turns
+the S7 rule into "any router call counts". Recomputed here from the method
+signatures rather than compared against a copy of themselves.
+"""
+import hashlib
+import re
+import sys
+
+want = {
+    hashlib.new("sha512_256", sig.encode()).digest()[:4].hex()
+    for sig in ("verify_discount(byte[])void", "pool_budget()void")
+}
+block = re.search(
+    r"var BUDGET_ONLY_SELECTORS = \[(.*?)\];", open(sys.argv[1]).read(), re.S
+).group(1)
+have = {
+    "".join(part.strip().rstrip(",")[2:].zfill(2) for part in row.split(",") if part.strip())
+    for row in re.findall(r"\[([^\]]*)\]", block)
+    if row.strip()
+}
+print("ok" if have == want else "mismatch have=%s want=%s" % (sorted(have), sorted(want)))
+SEL
+check "...and they are the selectors the contract actually exposes" "ok" \
+    "$("${PYTHON}" "${WORK}/selectors.py" "${WIDGET}" 2>/dev/null || echo unknown)"
 
 # The lookup that used to hang forever now refuses instead.
 check "a creator lookup that never answers times out" "1" \

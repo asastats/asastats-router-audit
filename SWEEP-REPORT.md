@@ -11,13 +11,14 @@ own. For the contract, read [REPORT.md](REPORT.md).
   `router/sweep.py`, `router/selection.py`, `engine/core/sweep.py`, and the
   wallet bridge's `signAndSend`
 - **Verification:** [verification/verify-sweep.sh](verification/verify-sweep.sh)
-  — 50 checks, all passing; plus six sweep groups that executed on mainnet, in
+  — 59 checks, all passing and **none skipped**: the two that need a node were
+  run against mainnet over an SSH-forwarded algod; plus six sweep groups that executed on mainnet, in
   [evidence/](evidence/). Those groups are now a fixture in the widget's own
   suite as well: `S6`'s fix is a rule about router groups, so its accepting
   cases are 97 transactions that executed rather than fixtures written to pass.
-- **Findings:** six — five Medium and one Informational, **all fixed**. Five
-  are deployed (`S3`'s contract half went live on 2026-08-30; see §2); `S6`'s
-  fix is in the widget and not yet released.
+- **Findings:** seven — six Medium and one Informational, **all fixed**. Five
+  are deployed (`S3`'s contract half went live on 2026-08-30; see §2); the `S6`
+  and `S7` fixes are in the widget and not yet released.
 
 ---
 
@@ -44,6 +45,7 @@ read the rest with the same intent.
 | [`S4`](findings/S4-forfeit-lacks-evaluation-veto.md) | Medium | The evaluation veto guards the opt-in path but not the automatic one | **Fixed** |
 | [`S5`](findings/S5-malformed-evaluation-raises.md) | Info | A malformed evaluation took the whole sweep down rather than degrading | **Fixed** |
 | [`S6`](findings/S6-convert-path-unchecked.md) | Medium | The conversion path is checked by nothing the engine does not choose | **Fixed** |
+| [`S7`](findings/S7-mirror-without-the-router.md) | Medium | The mirrored guard copied the cheap half and left the load-bearing one | **Fixed** |
 
 The four Medium ones share a precondition worth stating plainly: **none is
 reachable by an unprivileged remote attacker.** `S2`, `S3` and `S6` need the
@@ -55,6 +57,12 @@ in production three weeks ago.
 They are rated Medium rather than Low because each defeats a control that was
 built specifically to hold under those conditions, and because the value each
 exposes is unbounded.
+
+**Two of these were found by reviewing fixes, not code.** `S6` came from
+reviewing `S2`/`S3` and `S7` from reviewing `S6`; each fix was sound about the
+thing it was aimed at and wrong about its own edges. That is worth recording as
+a pattern, because it is the same one `S1` established: the dangerous moment is
+not writing a control, it is believing the control covers what its name says.
 
 **`S6` was found by reviewing the `S2` fix, not by doubting it.** That fix is
 sound on the path it covers: the forfeit destination is now resolved through

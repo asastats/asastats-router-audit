@@ -23,12 +23,15 @@ reports — 38 mechanical checks, all passing, in
 transactions that executed, in
 [verification/GROUP-RESULTS.md](verification/GROUP-RESULTS.md).
 
-**This report raised one finding of its own, and it is closed.**
+**This report raised two findings of its own, and both are closed.**
 [`S6`](findings/S6-convert-path-unchecked.md), Medium, off-chain, 2026-09-01:
 the dust sweep's conversion path ran no browser check on the group it signed,
 and the contract's hygiene guard could not stand in for one because a group
 that never calls the contract never reaches it. Fixed by mirroring that guard
-in the browser. Nothing in the contract changed. See §3.1 and §4.0.
+in the browser — and then [`S7`](findings/S7-mirror-without-the-router.md),
+because that mirror copied the hygiene half of the guard, which is not the half
+that refuses a plain transfer to a stranger. Nothing in the contract changed
+for either. See §3.1 and §4.0.
 
 **This is still not a clearance for unrestricted public deployment**, and the
 reason has nothing to do with the findings:
@@ -189,7 +192,7 @@ re-verified line by line; the table below is the summary, and
 | `M7` | Medium | MWPT asymmetric weight quoting drift | exact off-chain math |
 | `L1`–`L7`, `I1`–`I7` | Low / Info | see [findings/](findings/) | |
 
-### 4.0 The one this report raised, and how it closed
+### 4.0 The two this report raised, and how they closed
 
 [`S6`](findings/S6-convert-path-unchecked.md) — **Medium, off-chain, fixed.**
 Raised on 2026-09-01 by reviewing the fix for `S2`/`S3` rather than by doubting
@@ -205,6 +208,18 @@ change was needed or made.** The mirror was checked against the 97 transactions
 in [evidence/](evidence/): all 97 decode, and the dearest group that has
 executed pays 71,000 microALGO against the 1,000,000 ceiling. See §3.1 for why
 the contract could not close this itself.
+
+[`S7`](findings/S7-mirror-without-the-router.md) — **Medium, off-chain, fixed.**
+The mirror `S6` added was faithful and insufficient. `_assert_group_is_clean`
+checks hygiene — rekey, close, group fee — and hygiene is not what a hostile
+conversion violates: a plain transfer of the user's balance to a stranger
+carries none of those. What refuses that on a real routed group is the rest of
+this contract, `_assert_input_spent` and `_signed_floor` and the pinned pools,
+and none of it runs unless the router is called. So the browser now requires
+the group to contain a call to a **guarded** entry point — not `pool_budget` or
+`verify_discount`, whose exemption in §3.1 exists precisely because hygiene
+alone was never the safety argument. The application id is handed down by the
+Django view rather than read from the plan.
 
 ### 4.1 The one that was not closed, and now is
 
