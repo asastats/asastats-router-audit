@@ -6,6 +6,7 @@ STAMM and AlgoFi inside a single atomic group.
 
 **[Read the contract audit →](REPORT.md)**  ·
 **[Read the dust sweep audit →](SWEEP-REPORT.md)**  ·
+**[What the contract actually did →](evidence/)**  ·
 **[What this is worth →](DISCLAIMER.md)**
 
 ---
@@ -30,50 +31,53 @@ and mainnet would accept a close-out group whose fees consume the account's
 entire spendable balance; and the value veto added for `S1` guarded the path
 needing an explicit tick rather than the path that needs none.
 
-All three are fixed. The fee bound landed twice — in the widget for close-out
-groups, and as a fourth assertion in the contract's own group-hygiene guard for
-every routed group — and that second half is **source-only until the contract
-is redeployed**.
+All three are fixed, and since 2026-08-30 both halves of the fee bound are
+deployed rather than one. Those fixes were then followed by 35 property tests,
+because every one of them had been certified by example tests its own author
+wrote — the exact pattern that produced the first finding. They turned up a
+fourth defect on their first run, in both languages at once. See
+[SWEEP-REPORT.md](SWEEP-REPORT.md).
 
-Those fixes were then followed by 35 property tests, because every one of them
-had been certified by example tests its own author wrote — the exact pattern
-that produced the first finding. They turned up a fourth defect on their first
-run, in both languages at once. See [SWEEP-REPORT.md](SWEEP-REPORT.md).
-
-**The mainnet deployment is restricted to its admin, and this audit does not
-clear it to be otherwise.** What it does do is remove the reason that
-restriction was load-bearing twice over: while it is set, the admin is the only
-caller *and* the only stop button, because the contract had none. It now has `set_paused` — see
-[what has to exist first](contracts/going-unrestricted.md), which also records
-the input cap that was built for the same purpose and removed, because a bound
-in base units cannot state a value.
+**The mainnet deployment is no longer restricted to its admin, and this audit
+did not clear it to be otherwise.** `3689591968` went up on 2026-08-30 with
+`RESTRICT_TO_ADMIN` off, and the seven mainnet groups in [evidence/](evidence/)
+— routed by an account that is not the admin — are the proof rather than the
+claim. The restriction had been doing two jobs at once: while it was set, the
+admin was the only caller *and* the only stop button, because the contract had
+none. What replaces it is `set_paused`, [pressed on mainnet before it was
+trusted](contracts/going-unrestricted.md), and a group fee bound sized from the
+dearest legitimate route. Neither depends on any of this analysis being
+correct, which is the entire reason to prefer them to more analysis.
 
 Every audit of this contract — this one included — was produced by an AI
 system, and none has been reviewed by a human with Algorand experience. Two
 prior audits recommended lifting that restriction and both were arguing from a
-false statement of fact, which is why the two mechanisms above are written to
-hold whether or not any of this analysis is correct. See
-[DISCLAIMER.md](DISCLAIMER.md).
+false statement of fact. **The restriction coming off does not retire that
+warning; it is what makes it load-bearing.** See [DISCLAIMER.md](DISCLAIMER.md).
 
 ## Check it yourself
 
-Every factual claim in the report is a command:
+Every factual claim in the reports is a command. 132 of them:
 
 ```bash
 cd verification
-ROUTER=/path/to/router ./verify.sh          # the contract — 27 checks
-ROUTER=/path/to/router ./verify-sweep.sh    # the dust sweep — 42 checks
+ROUTER=/path/to/router ./verify.sh              # the contract, from source — 36
+ROUTER=/path/to/router ./verify-sweep.sh        # the dust sweep — 42
+python3 verify-groups.py                        # what the chain did — 54
 ```
 
 `verify.sh` needs no node, no credentials and no network. `verify-sweep.sh`
-needs node.js and, for two of its checks, a mainnet algod — it reports those
-as `SKIP` rather than passing them silently when one is not configured. Neither
-script submits anything; the chain cases use `simulate` with no key.
+needs node.js and, for two of its checks, a mainnet algod. `verify-groups.py`
+runs offline against the transactions in [evidence/](evidence/) and uses a node
+for six further checks when one is configured. All three report `SKIP` rather
+than passing silently when something they need is absent, and none submits
+anything; the chain cases use `simulate` with no key.
 
-The recorded output is in [verification/RESULTS.md](verification/RESULTS.md)
-and [verification/SWEEP-RESULTS.md](verification/SWEEP-RESULTS.md). If
-something in either report is not covered there, it is not verified — and each
-report's final sections say what was deliberately left unchecked.
+Recorded output: [RESULTS.md](verification/RESULTS.md),
+[SWEEP-RESULTS.md](verification/SWEEP-RESULTS.md),
+[GROUP-RESULTS.md](verification/GROUP-RESULTS.md). If something in a report is
+not covered there, it is not verified — and each report's final sections say
+what was deliberately left unchecked.
 
 ## Layout
 
@@ -81,23 +85,25 @@ report's final sections say what was deliberately left unchecked.
 |---|---|
 | [REPORT.md](REPORT.md) | the contract audit |
 | [SWEEP-REPORT.md](SWEEP-REPORT.md) | the dust sweep audit — off-chain, separate scope |
+| [evidence/](evidence/) | seven groups that executed on mainnet, and what they settle |
 | [DISCLAIMER.md](DISCLAIMER.md) | how this was produced and what that costs |
 | [findings/](findings/) | one file per finding |
 | [verification/](verification/) | the scripts behind every claim, and their recorded output |
-| [contracts/](contracts/) | access-control matrix, architecture notes, and [what has to exist before the admin restriction comes off](contracts/going-unrestricted.md) |
+| [contracts/](contracts/) | access-control matrix, architecture notes, and [what the admin restriction was doing before it came off](contracts/going-unrestricted.md) |
 | [tools/](tools/) | Tealer static analysis |
 | [history/](history/) | audits v1–v5 as issued, and what each got wrong |
-| [methodology/](methodology/) | scope, approach, and what an AI audit can and cannot do |
+| [methodology/](methodology/) | scope, approach, what an AI audit can and cannot do, and [how to spend a multi-agent review on it](methodology/ultrareview.md) |
 
 ## The contract
 
 | | |
 |---|---|
 | source | `router/contracts/router_app.py`, 2,391 lines of Algorand Python |
-| compiled | 4,681 lines of TEAL v11, PuyaPy 5.9.0 |
-| mainnet | [`3688554446`](https://allo.info/application/3688554446) — restricted to admin |
-| testnet | `770123816` — unrestricted |
-| audited revision | `8d130d6` |
+| compiled | 4,699 lines of TEAL v11, PuyaPy 5.9.0 |
+| mainnet | [`3689591968`](https://allo.info/application/3689591968) — **unrestricted**, 5 bps, deployed 2026-08-30 from `848a3a3` |
+| testnet | `770729651` — unrestricted, 0 bps |
+| retired | `3688554446` (mainnet) and `770123816` (testnet), both destroyed |
+| audited revision | `8d130d6`, re-verified at `a6b9df6` |
 
 ## Why there are six of these
 
@@ -106,6 +112,13 @@ that were not true. The full accounting is in [history/](history/); the short
 version is that fluent prose asserting an unchecked fact is the characteristic
 failure of an AI audit, and the only defence found so far is to make every
 claim executable.
+
+**This one went stale within a day of being published**, which is worth saying
+out loud: it opened by describing a mainnet deployment that was replaced the
+same afternoon by an unrestricted one. That is the same class of error as v4's
+and v5's — a statement about a running system, made from source — and the fix
+is the same too. `verify-groups.py` and [evidence/](evidence/) exist so that
+the next reader finds out from a command rather than from a paragraph.
 
 That is what this repository is for. Corrections welcome — especially from
 people who have written Algorand contracts in anger.

@@ -241,16 +241,25 @@ info = client.account_info(address)
 spendable = info["amount"] - info["min-balance"]
 empty = [a["asset-id"] for a in info["assets"] if a["amount"] == 0]
 sp = client.suggested_params()
+# A rekeyed account has to say who would have signed, or simulate refuses the
+# group for the wrong reason and the check below reports `refused` when the
+# truthful answer is "not asked". That is exactly the failure this repository
+# exists to stop, and it was found by pointing this script at a second account:
+# the first was not rekeyed, so the bug could not appear.
+auth = info.get("auth-addr")
 
 def run(fee, asset, revoke=None):
     txn = AssetTransferTxn(sender=address, receiver=address, amt=0, index=asset,
         close_assets_to=address, revocation_target=revoke,
         sp=SuggestedParams(fee=fee, first=sp.first, last=sp.last, gh=sp.gh,
                            gen=sp.gen, flat_fee=True, min_fee=sp.min_fee))
+    signed = [transaction.SignedTransaction(t, None)
+              for t in assign_group_id([txn])]
+    if auth:
+        for one in signed:
+            one.authorizing_address = auth
     request = models.SimulateRequest(
-        txn_groups=[models.SimulateRequestTransactionGroup(
-            txns=[transaction.SignedTransaction(t, None)
-                  for t in assign_group_id([txn])])],
+        txn_groups=[models.SimulateRequestTransactionGroup(txns=signed)],
         allow_empty_signatures=True)
     try:
         return not client.simulate_transactions(request)["txn-groups"][0].get(

@@ -104,11 +104,35 @@ echo
 echo "== group hygiene  every entry point refuses a rekey or a close =="
 ENTRIES="$(grep -cE '@arc4\.(abimethod|baremethod)' "${CONTRACT}")"
 GUARDS="$(grep -c '_assert_group_is_clean()' "${CONTRACT}")"
-check "entry points" "14" "${ENTRIES}"
-check "of which assert group hygiene (see REPORT 4.3)" "12" "${GUARDS}"
+check "entry points" "15" "${ENTRIES}"
+check "of which assert group hygiene (see REPORT 3.1)" "13" "${GUARDS}"
 present "rekey refused"                     'rekey_to == Global\.zero_address'
 present "ALGO close refused"                'close_remainder_to == Global\.zero_address'
 present "ASA close refused"                 'asset_close_to == Global\.zero_address'
+present "and the group's total fee is bounded" 'paid <= MAX_GROUP_FEE'
+
+echo
+echo "== the deployment  what is compiled into mainnet, from its own manifest =="
+# Read rather than described. The two errors that did this series the most
+# damage - v4 citing a testnet id as mainnet, v5 recording a removal that never
+# happened - are both answered by this file, and neither audit opened it.
+MANIFEST="${ROUTER}/build/releases/router-mainnet-3689591968.json"
+if [ -f "${MANIFEST}" ]; then
+    field () { python3 -c "import json,sys; print(json.load(open(sys.argv[1]))${2})" "${MANIFEST}"; }
+    check "mainnet application"                "3689591968" "$(field . "['application_id']")"
+    check "RESTRICT_TO_ADMIN"                  "0"          "$(field . "['template_values']['RESTRICT_TO_ADMIN']")"
+    check "restrict_to_admin, as recorded"     "False"      "$(field . "['restrict_to_admin']")"
+    check "compiler"                           "puyapy 5.9.0" "$(field . "['compiler']")"
+    check "global uints, three since set_paused" "3"        "$(field . "['global_schema']['ints']")"
+    check "the pause exists in the source"     "1" \
+          "$(grep -c 'def set_paused' "${CONTRACT}")"
+    check "and both route entry points honour it" "2" \
+          "$(grep -c 'assert not self.paused' "${CONTRACT}")"
+    check "the group fee ceiling"              "1" \
+          "$(grep -cE '^MAX_GROUP_FEE = 1_000_000$' "${CONTRACT}")"
+else
+    echo "  SKIP  mainnet manifest                                      not at ${MANIFEST}"
+fi
 
 echo
 echo "== admin bounds =="

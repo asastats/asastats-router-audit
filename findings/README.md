@@ -5,13 +5,16 @@ the contract audit, and four by the dust sweep audit.
 
 ## Open
 
-**None.** All three dust sweep findings are closed.
+**None.** All five findings this audit raised are closed, and since 2026-08-30
+all of them are deployed — `S3`'s contract-side bound was the last one waiting,
+and mainnet `3689591968` carries `MAX_GROUP_FEE = 1_000_000`.
 
-One caveat that is not a finding but should not be discovered later: `S3`'s
-contract-side bound is **source-only**. Mainnet `3688554446` and testnet
-`770123816` were compiled before `_assert_group_is_clean` learned to total the
-group's fee, so a routed group they execute is still bounded by nothing but the
-signer's balance until a deployment happens. See [`S3` §7](S3-unbounded-fee.md).
+One caveat that is not a finding but should not be discovered later: `S3` is
+closed on the **conversion** path and cannot be closed on the **close-out**
+path by any contract, because a close-out group carries no application call for
+one to inspect. Mainnet still accepts a close-out group whose fees consume the
+signer's entire spendable balance; the widget's `MAX_CLOSE_OUT_FEE` is the only
+bound there is. See [`S3` §7](S3-unbounded-fee.md).
 
 ## Raised by the dust sweep audit
 

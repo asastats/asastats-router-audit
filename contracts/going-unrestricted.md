@@ -1,7 +1,12 @@
-# Before `RESTRICT_TO_ADMIN` comes off
+# `RESTRICT_TO_ADMIN`, before and after it came off
 
 Not a finding. A note on the one decision this series keeps circling, written
-down because it has now been asked three times and answered wrongly twice.
+down because it had been asked three times and answered wrongly twice.
+
+**It came off on 2026-08-30.** Mainnet `3689591968` serves the public. This
+document was written the day before, as an argument about what would have to
+exist first; it is kept in that order because the answer is only worth anything
+if you can see what was asked. §"What actually happened" is at the foot.
 
 ## What the control is
 
@@ -15,7 +20,8 @@ so it is fixed at compile time and removing it is a redeploy rather than a
 setting. The assertion message is the contract's own framing: *while under
 test*. This was always meant to come off.
 
-Mainnet `3688554446` has it set. Testnet `770123816` does not.
+At the time of writing, mainnet `3688554446` had it set and testnet
+`770123816` did not. Both are now retired; neither survivor sets it.
 
 ## What happened the last two times
 
@@ -104,10 +110,45 @@ against your own account on mainnet, costs one extra deployment and converts "we
 button nobody has pressed is a claim, not a control — which is the whole
 argument of this repository, applied to its own recommendation.
 
+---
+
+## What actually happened
+
+`3689591968`, 2026-08-30. Both mechanisms carried, and the pause was exercised
+rather than assumed — on testnet first, in both directions, then on mainnet
+within minutes of the create:
+
+```
+round 64574891   paused, immediately after create
+round 64574900   fee 0 -> 5
+round 64574945   resumed
+round 64574958   predecessor 3688554446 retired, 4.998001 ALGO recovered
+```
+
+Not the extra deployment this document suggested, but the same property by a
+cheaper route: the contract was inert while it was configured, and the lever
+was pulled before any stranger could reach it. What it did **not** do is
+exercise the pause against live third-party traffic, which is a different and
+untested thing.
+
+Two facts about that deployment worth having in one place, because they are
+what a reader will want to check:
+
+- **`RESTRICT_TO_ADMIN: 0`** in the manifest, and — the half that cannot be
+  edited — four groups in [evidence/](../evidence/) that routed from an account
+  which is not the admin.
+- **`fee_bps` moved 0 → 5**, the first time the rate has ever been charged to
+  a stranger. Every fee taken in the live evidence is exactly
+  `floor(ALGO leg × 5 / 10000)`; the ceiling `set_fee` enforces is 100.
+
+`verify.sh` reads the manifest rather than describing it, and
+`verify-groups.py` reads the groups. Neither reads this paragraph.
+
 ## What none of this substitutes for
 
 A human with Algorand experience reading the contract.
-[DISCLAIMER.md](../DISCLAIMER.md) records that none ever has. That gap is
-tolerable while the admin is the only caller and becomes the whole question the
-moment they are not. The pause bounds how long being wrong lasts; it does not
-make being wrong less likely.
+[DISCLAIMER.md](../DISCLAIMER.md) records that none ever has. That gap was
+tolerable while the admin was the only caller. **They are not any more, so it
+is now the whole question**, and the pause is the only thing bounding it — it
+bounds how long being wrong lasts, and does nothing at all to make being wrong
+less likely.

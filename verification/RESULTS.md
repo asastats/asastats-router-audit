@@ -6,14 +6,19 @@ Output of `./verify.sh` on the revision named below. Re-run it yourself:
 ROUTER=/path/to/router ./verify.sh
 ```
 
+The last section reads `router/build/releases/router-mainnet-3689591968.json`
+— the deployment manifest — rather than describing what is deployed. Both
+errors that did this series the most damage are answered by that file, and
+neither audit that made them opened it.
+
 ```
 router:   <router-checkout>
-revision: 8d130d6
+revision: a6b9df6
 tree:     2 file(s) modified
-date:     2026-08-29 18:27:55Z
+date:     2026-09-01 08:27:00Z
 
 == C1  convert_and_distribute is admin-only and reads its pool from state ==
-  PASS  admin assertion exists                                     11 occurrence(s)
+  PASS  admin assertion exists                                     12 occurrence(s)
   PASS  same-group approval refused                                2 occurrence(s)
   PASS  conversion pool is not a parameter                         0
 
@@ -39,11 +44,22 @@ date:     2026-08-29 18:27:55Z
   PASS  double opt-in refused                                      1 occurrence(s)
 
 == group hygiene  every entry point refuses a rekey or a close ==
-  PASS  entry points                                               14
-  PASS  of which assert group hygiene (see REPORT 4.3)             12
+  PASS  entry points                                               15
+  PASS  of which assert group hygiene (see REPORT 3.1)             13
   PASS  rekey refused                                              1 occurrence(s)
   PASS  ALGO close refused                                         1 occurrence(s)
   PASS  ASA close refused                                          1 occurrence(s)
+  PASS  and the group's total fee is bounded                       1 occurrence(s)
+
+== the deployment  what is compiled into mainnet, from its own manifest ==
+  PASS  mainnet application                                        3689591968
+  PASS  RESTRICT_TO_ADMIN                                          0
+  PASS  restrict_to_admin, as recorded                             False
+  PASS  compiler                                                   puyapy 5.9.0
+  PASS  global uints, three since set_paused                       3
+  PASS  the pause exists in the source                             1
+  PASS  and both route entry points honour it                      2
+  PASS  the group fee ceiling                                      1
 
 == admin bounds ==
   PASS  fee ceiling is 100 bps                                     1
@@ -56,8 +72,18 @@ date:     2026-08-29 18:27:55Z
   PASS  the whole input must be spent                              3 occurrence(s)
 
 == the suite ==
-  note  tests collected: 948
-  note  tests/test_sweep.py collects: 123  (audit v5 claimed 982)
+  note  tests collected: 999
+  note  tests/test_sweep.py collects: 140  (audit v5 claimed 982)
 
-passed 27, failed 0
+passed 36, failed 0
 ```
+
+## What is deliberately not in here
+
+`verify.sh` needs no node, no key and no network, and that is a design
+constraint rather than an accident: anybody can run it against a checkout of
+the router in one command. The claims that need a running system live in
+[verify-groups.py](verify-groups.py) and its recorded output,
+[GROUP-RESULTS.md](GROUP-RESULTS.md); the claims that need the sweep's
+off-chain estate live in [verify-sweep.sh](verify-sweep.sh) and
+[SWEEP-RESULTS.md](SWEEP-RESULTS.md).

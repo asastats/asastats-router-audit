@@ -11,12 +11,16 @@
 3. **Re-verified every prior finding against the source.** Not against the
    previous report. Where a mitigation was claimed, the code implementing it
    was located and quoted.
-4. **Turned each claim into a command.** 27 checks in
-   [verify.sh](../verification/verify.sh), output recorded.
+4. **Turned each claim into a command.** 132 checks across
+   [verify.sh](../verification/verify.sh),
+   [verify-sweep.sh](../verification/verify-sweep.sh) and
+   [verify-groups.py](../verification/verify-groups.py), output recorded.
 5. **Re-proved the static-analysis verdicts** rather than inheriting them.
-6. **Exercised the off-chain sweep against live data** — the only part of this
-   audit that touched a running system — which is where the one real finding
-   came from.
+6. **Exercised the off-chain sweep against live data**, which is where the one
+   real finding came from.
+7. **Read seven groups that executed on mainnet** — added after this audit made
+   the third stale-deployment error in the series. See
+   [evidence/](../evidence/) and §"What source cannot answer" below.
 
 ## What "verified" means here
 
@@ -90,6 +94,43 @@ reading why turned out to be worth more than the six: a payment is refused by a
 *different* rule than the one that names it, so the type check is defence in
 depth rather than the load-bearing thing it looks like. That is a fact about
 the control nobody had written down, and no amount of reading it had surfaced.
+
+## What source cannot answer, and what that cost
+
+Executable claims fixed one failure and property tests fixed a second. A third
+survived both, and this audit walked into it within a day of publishing:
+**every check in `verify.sh` and `verify-sweep.sh` reads a file, and a file
+cannot tell you what is deployed.**
+
+This report opened by stating that mainnet was restricted to its admin. It was,
+when the sentence was written. An unrestricted replacement went up the same
+afternoon. Exactly the shape of v4's error and v5's — and unreachable by
+reading source more carefully, because the source was correct and the world had
+moved.
+
+So [verify-groups.py](../verification/verify-groups.py) reads groups that
+executed. It answers *did the chain do this?* rather than *does the code say
+this?*, and it is the only one of the three that can settle a question about a
+deployment. It found nothing wrong with the contract. It found two things
+nobody had written down — a fee taken only on ALGO hops, and a direct pool leg
+sitting outside the co-signed floor — and it exposed a check in this
+repository's own script that had been reporting a pass for the wrong reason
+since the day it was written.
+
+**What a trace cannot do** is show a control firing. Nobody attacked these
+groups, so nothing needed refusing, and the negative claims — the ones that
+matter — still rest on source and on `simulate`. It is the strongest available
+evidence about what the deployment *is* and the weakest about how it behaves
+under attack. [evidence/README.md §11](../evidence/README.md) says so at
+length, because a trace is unusually good at looking like proof of more than it
+is.
+
+## Spending a deeper review
+
+[ultrareview.md](ultrareview.md) plans where a multi-agent code review would
+buy the most, and the answer is not the contract. The fix commits — every one
+of which was certified by tests its own author wrote — the deployment scripts,
+and this repository's own verifiers are the three targets, in that order.
 
 ## Scope
 

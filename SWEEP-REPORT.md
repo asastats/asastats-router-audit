@@ -5,14 +5,15 @@ involved in the operation examined here: a dust sweep's close-out groups carry
 no application call, which is the whole reason they needed a control of their
 own. For the contract, read [REPORT.md](REPORT.md).
 
-- **Date:** 2026-08-30
+- **Date:** 2026-08-30, revised 2026-09-01
 - **Scope:** `widgets/inhouse/dustsweep/` (controller, view, tests),
   `router/sweep.py`, `router/selection.py`, `engine/core/sweep.py`, and the
   wallet bridge's `signAndSend`
 - **Verification:** [verification/verify-sweep.sh](verification/verify-sweep.sh)
-  — 42 checks, all passing, none skipped
-- **Findings:** four — three Medium and one Informational, all fixed. One of
-  the fixes is source-only until the contract is redeployed.
+  — 42 checks, all passing, none skipped; plus six sweep groups that executed
+  on mainnet, in [evidence/](evidence/)
+- **Findings:** four — three Medium and one Informational, **all fixed and all
+  deployed**. `S3`'s contract half went live on 2026-08-30; see §2.
 
 ---
 
@@ -35,7 +36,7 @@ read the rest with the same intent.
 | id | severity | title | status |
 |:---:|:---:|---|---|
 | [`S2`](findings/S2-forfeit-target-self-certifying.md) | Medium | The browser whitelist does not bind the forfeit destination | **Fixed** |
-| [`S3`](findings/S3-unbounded-fee.md) | Medium | Nothing bounds the fee on a transaction the sweep asks a user to sign | **Fixed** (contract half undeployed) |
+| [`S3`](findings/S3-unbounded-fee.md) | Medium | Nothing bounds the fee on a transaction the sweep asks a user to sign | **Fixed**, both halves deployed |
 | [`S4`](findings/S4-forfeit-lacks-evaluation-veto.md) | Medium | The evaluation veto guards the opt-in path but not the automatic one | **Fixed** |
 | [`S5`](findings/S5-malformed-evaluation-raises.md) | Info | A malformed evaluation took the whole sweep down rather than degrading | **Fixed** |
 
@@ -50,12 +51,20 @@ They are rated Medium rather than Low because each defeats a control that was
 built specifically to hold under those conditions, and because the value each
 exposes is unbounded.
 
-**What is not deployed.** `S3` is closed twice over — a cap in the widget for
-close-out groups, and a fourth assertion in `_assert_group_is_clean` that
-totals the fee across any routed group. The second is source-only: mainnet
-`3688554446` and testnet `770123816` were compiled before it existed, so
-every group they execute is still bounded by nothing but the signer's balance
-until a deployment happens. See [`S3` §7](findings/S3-unbounded-fee.md).
+**What is deployed, and what the chain still accepts.** `S3` is closed twice
+over — a cap in the widget for close-out groups, and a fourth assertion in
+`_assert_group_is_clean` that totals the fee across any routed group. When this
+report was first written the second half was source-only. It is not any more:
+mainnet `3689591968` and testnet `770729651` were compiled on 2026-08-30 with
+`MAX_GROUP_FEE = 1_000_000`, and the predecessors that lacked it are retired
+and destroyed.
+
+That closes the conversion path. **It does not close the close-out path, and
+cannot.** A close-out group carries no application call, so no contract sees
+it, and mainnet still accepts one whose fees consume the signer's entire
+spendable balance — `verify-sweep.sh` re-simulates exactly that on every run
+and it is still `accepted`. The widget's `MAX_CLOSE_OUT_FEE` is the only bound
+there is on that path. See [`S3` §7](findings/S3-unbounded-fee.md).
 
 ### `S2` — the whitelist restates the engine where it matters most
 
@@ -103,8 +112,9 @@ and never rendered; the *You recover* figure is gross of fees.
 tenth of what a close-out returns and the fee is shown beside what the sweep
 recovers; `_assert_group_is_clean` totals the fee across any routed group and
 refuses a total above `MAX_GROUP_FEE`, sized from the dearest route
-`route_fee` can return rather than picked. The contract half awaits a
-deployment.
+`route_fee` can return rather than picked. Both halves are deployed. Live: the
+dearest of the six sweep groups paid 60,000 microALGO, 6% of the ceiling, and
+every one of its 47 close-outs paid the 1,000 minimum against a cap of 10,000.
 
 ### `S4` — the veto is on the branch that needs it less
 
@@ -282,12 +292,54 @@ Worth recording alongside: **14 of the 104 holdings are unpriced by the
 router** and land in `UNPRICED`, where `S1`'s veto is what protects them. That
 path is not an edge case.
 
-## 7. Reproducing
+## 7. A whole sweep, as it executed
+
+[evidence/](evidence/) holds six consecutive sweep groups from 2026-08-31 —
+two of close-outs, three of conversions, and one that both closes and
+**forfeits**. 47 holdings closed, 4.7 ALGO of minimum balance released, 0.28
+ALGO of network fees, and nothing left over: none of the 47 is still opted in
+on the account snapshot taken afterwards.
+
+**The six forfeits all went to the asset's creator**, resolved against the
+chain rather than against the response that described them:
+
+| asset | | closed |
+|---|---|---:|
+| `388502764` SVANSY, `607591690` XGLI, `792313023` xSOL | | |
+| `310014962` ALCH, `27165954` PLANET, `417708610` DEGEN | six for six | ✓ |
+
+That is `S2`'s control doing the thing `S2` said it must. Redirect one in the
+evidence and `verify-groups.py` fails; that mutation is one of six run against
+it.
+
+**The dApp-position filter earned its keep, visibly.** Eleven empty holdings
+were left alone. Eight are NFTs, excluded unconditionally. Two —
+`760037151` (xUSD) and `2400334372` (cAlgo) — hold zero on chain and are not
+empty at all: the evaluation shows 1,000,000 xUSD staked with CompX and
+136,623,993 cAlgo in a Tinyman v2 LP position. Neither carries a `Balance`
+program, so the filter disqualifies the asset, and closing either holding would
+have stranded a position its owner still has to withdraw. This is the one case
+where "the holding is empty" and "the user has nothing here" come apart, and
+the filter got it right on live data.
+
+The eleventh, `242345487`, is in neither list — the evaluation does not mention
+it at all, so the planner cannot see it. Failing that way round is correct, and
+it is silent: 0.1 ALGO stays locked and no row ever appears to explain why.
+Worth a line in the interface; not a finding.
+
+**What this does not show** is that the six forfeits were worth forfeiting.
+That is `S1` and `S4`, and it needs the account evaluation from the same
+moment, which is not in the evidence. Those two remain argued from source, from
+§6's measurement, and from the xALGO/tALGO incident.
+
+## 8. Reproducing
 
 ```sh
 ROUTER=/path/to/router WIDGETS=/path/to/widgets ENGINE=/path/to/engine \
 ALGOD_URL=https://your-node SWEEP_ADDRESS=SOMEADDRESS… \
     ./verification/verify-sweep.sh
+
+python3 verification/verify-groups.py            # the six groups above
 
 REDIS_AUTH=… ROUTER=/path/to/router \
     python verification/measure-divergence.py evaluation.json …
@@ -295,4 +347,11 @@ REDIS_AUTH=… ROUTER=/path/to/router \
 
 Reads only; submits nothing. The chain cases use `simulate` with
 `allow-empty-signatures` and no key. Without `ALGOD_URL` and `SWEEP_ADDRESS`
-those four checks report `SKIP` rather than passing silently.
+those checks report `SKIP` rather than passing silently.
+
+**One of them was reporting the right word for the wrong reason.** The simulate
+showing that the chain bounds a close-out fee only by the balance did not set
+`sgnr`, so against a *rekeyed* account it was refused for authorisation — and
+`refused` is exactly what a working bound looks like. Found by pointing the
+script at a second account; fixed by carrying `auth-addr` into the simulated
+signature. See [evidence/README.md §10](evidence/README.md).

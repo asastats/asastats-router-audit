@@ -5,9 +5,9 @@
 - **Component:** off-chain — `dustsweep.js` `closeOutProblems`; also
   `contracts/router_app.py` `_assert_group_is_clean` on the conversion path
 - **Origin:** this audit
-- **Status:** **Fixed** — close-outs by `0be86c7` (widget) and `2aad22b`
-  (planner); every routed group by the contract's own guard. **The contract
-  half is not deployed**; see §7.
+- **Status:** **Fixed and deployed** — close-outs by `0be86c7` (widget) and
+  `2aad22b` (planner); every routed group by the contract's own guard, live on
+  mainnet `3689591968` since 2026-08-30. What a contract cannot reach is in §7.
 
 ---
 
@@ -182,10 +182,40 @@ change that caused it" — the first `_signed_floor` was refused at 1,877 that
 way. It executes five-way and four-way splits against LocalNet, and both still
 pass. 111 LocalNet tests, 967 in the router suite.
 
-## 7. What is not done
+## 7. What is deployed, and what cannot be
 
-**The contract half is source-only.** Mainnet `3688554446` and testnet
-`770123816` were compiled before this guard existed, so every group they
-execute is still bounded only by the signer's balance. Closing `S3` on chain
-means a deployment, and until one happens this finding is fixed in the
-repository and open in production.
+**The contract half is live since 2026-08-30.** Mainnet `3689591968` and
+testnet `770729651` were compiled with `MAX_GROUP_FEE = 1_000_000`; the
+manifest records it and `verify.sh` reads the manifest. `3688554446` and
+`770123816`, which lacked it, are retired and destroyed. The paragraph that
+stood here — *fixed in the repository and open in production* — is no longer
+true of the conversion path.
+
+Observed on four routed mainnet groups: the dearest paid 71,000 microALGO,
+**7.1% of the ceiling**. The bound is loose by design and the traffic is
+nowhere near it.
+
+**The close-out path cannot be closed by the contract, and this is structural.**
+A close-out group carries no application call, so `_assert_group_is_clean`
+never runs over it. Simulated against mainnet after the deployment, on a
+different account from the one in §2:
+
+```
+balance    : 39.255847 ALGO
+min-balance: 23.573000 ALGO
+spendable  : 15.682847 ALGO
+
+--- fee = entire spendable balance ------------- ACCEPTED
+```
+
+Unchanged, and unchangeable from inside the contract. **The widget's
+`MAX_CLOSE_OUT_FEE` is the only bound on that path**, which is why it is the
+half that had to be right. Live, all 47 close-outs in
+[evidence/](../evidence/) paid the 1,000 microALGO minimum against a cap of
+10,000.
+
+That simulation is also where this repository's own script was found to be
+wrong. The account above is rekeyed, and the first version of the check did not
+set `sgnr`, so simulate refused the group for **authorisation** and the check
+recorded `refused` — indistinguishable from the fee bound working. See
+[evidence/README.md §10](../evidence/README.md).

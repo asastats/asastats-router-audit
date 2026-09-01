@@ -24,8 +24,13 @@ the guards inside each body, rather than read off by eye. Reproduce with
 | `verify_discount` | | | — | ed25519 voucher over a rebuilt message |
 | `pool_budget` | | | — | |
 
-`RESTRICT_TO_ADMIN` is a compile-time template variable. Every mainnet
-deployment to date has set it; testnet does not.
+`RESTRICT_TO_ADMIN` is a compile-time template variable. **It is off on
+mainnet `3689591968` and testnet `770729651`**, and was set on every mainnet
+deployment before 2026-08-30. So the "restricted" column above describes a
+control that is compiled in but currently unset: `close_holding`, `route` and
+`route3` accept any caller. `verify.sh` reads the deployment manifest for this
+rather than describing it, and [evidence/](../evidence/) has four groups that
+routed from an account which is not the admin.
 
 `set_paused` stops `route` and `route3` in one transaction — the mechanism
 that has to exist before the restriction comes off, since while it is set the
@@ -40,6 +45,9 @@ if any carries:
 - `rekey_to != Global.zero_address` — a rekey hands the account away permanently
 - `close_remainder_to != Global.zero_address` — drains the ALGO balance
 - `asset_close_to != Global.zero_address` — drains an ASA holding
+
+Since 2026-08-30 it also totals the group's fee and refuses a total above
+`MAX_GROUP_FEE` — the contract half of [`S3`](../findings/S3-unbounded-fee.md).
 
 This is what makes a routed group safe to sign as one click. The attack it
 refuses is attaching a close or a rekey to the same approval that authorises a
