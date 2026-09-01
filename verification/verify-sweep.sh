@@ -29,6 +29,7 @@ ROUTER="${ROUTER:-$(cd "${HERE}/../../router" 2>/dev/null && pwd)}"
 WIDGETS="${WIDGETS:-$(cd "${HERE}/../../frontend/website/widgets" 2>/dev/null && pwd)}"
 ENGINE="${ENGINE:-$(cd "${HERE}/../../engine" 2>/dev/null && pwd)}"
 BUNDLE="${BUNDLE:-${HERE}/../../frontend/website/static/js/bundle.js}"
+SWAPBRIDGE="${SWAPBRIDGE:-${HERE}/../../frontend/wallet/src/swapBridge.ts}"
 PYTHON="${PYTHON:-python3}"
 STRICT=""
 [ "${1:-}" = "--strict" ] && STRICT="yes"
@@ -442,6 +443,34 @@ JS
     check "neither browser check raises on any shape" "degrades" \
         "$(node "${WORK}/shapes.js" 2>/dev/null || echo unknown)"
 fi
+
+echo
+echo "S6 — is the conversion path checked at all? (OPEN)"
+echo "-------------------------------------------------------------------------"
+# These pin the reproduction of an OPEN finding, so they assert the gap rather
+# than a fix. When S6 is closed they must be inverted, and that is deliberate:
+# a passing run of this script should never be readable as "S6 is handled".
+
+# The convert branch returns before either browser check is reached.
+check "signAction dispatches on the engine's own action.kind" "1" \
+    "$(sed -n '/^async function signAction/,/^}/p' "${WIDGET}" | grep -c 'if (action.kind === "convert") {')"
+check "...and its convert branch runs no group check" "0" \
+    "$(sed -n '/if (action.kind === "convert") {/,/^  }/p' "${WIDGET}" | grep -c 'closeOutProblems\|forfeitTargetProblems')"
+
+# The bridge checks the group's structure, never a field that moves value.
+if [ -f "${SWAPBRIDGE}" ]; then
+    check "signAndSendPartial checks quote placement and signatures" "3" \
+        "$(sed -n '/export async function signAndSendPartial/,/^}/p' "${SWAPBRIDGE}" | grep -c 'Quote authorization must be the final transaction\|Backend signature does not match the grouped transaction\|Backend quote signature is missing')"
+    check "...and inspects no close, rekey or fee field" "0" \
+        "$(sed -n '/export async function signAndSendPartial/,/^}/p' "${SWAPBRIDGE}" | grep -c 'close\|rekey\|\.fee')"
+else
+    skip "the bridge's partial-group checks" "set SWAPBRIDGE=/path/to/swapBridge.ts"
+fi
+
+# The contract would refuse these groups. It only runs if it is called, which
+# is the whole of S6 - the same structural fact S3 §7 records for close-outs.
+check "the hygiene guard refuses closes, when it runs" "2" \
+    "$(sed -n '/def _assert_group_is_clean/,/def _signed_floor/p' "${CONTRACT}" | grep -c 'this group closes')"
 
 echo
 echo "context"

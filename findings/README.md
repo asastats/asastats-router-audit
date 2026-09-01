@@ -1,13 +1,22 @@
 # Findings
 
-28 in total across seven audits: 23 raised by v1–v5 and closed, one raised by
-the contract audit, and four by the dust sweep audit.
+29 in total across seven audits: 23 raised by v1–v5 and closed, one raised by
+the contract audit, and five by the dust sweep audit.
 
 ## Open
 
-**None.** All five findings this audit raised are closed, and since 2026-08-30
-all of them are deployed — `S3`'s contract-side bound was the last one waiting,
-and mainnet `3689591968` carries `MAX_GROUP_FEE = 1_000_000`.
+[`S6`](S6-convert-path-unchecked.md) — **the conversion path is checked by
+nothing the engine does not choose.** Raised on 2026-09-01 by a review of the
+`S2`/`S3` fix, which is sound on the path it covers. `signAction` dispatches on
+`action.kind`, a field of the same response it would otherwise inspect, and the
+convert branch runs no check at all; the contract's `_assert_group_is_clean`
+would refuse such a group but only runs if the group calls the router, which
+nothing off-chain requires. Same precondition as `S2` and `S3`, and rated the
+same Medium for the same reasons.
+
+The other five findings this audit raised are closed, and since 2026-08-30 all
+of them are deployed — `S3`'s contract-side bound was the last one waiting, and
+mainnet `3689591968` carries `MAX_GROUP_FEE = 1_000_000`.
 
 One caveat that is not a finding but should not be discovered later: `S3` is
 closed on the **conversion** path and cannot be closed on the **close-out**
@@ -24,11 +33,12 @@ bound there is. See [`S3` §7](S3-unbounded-fee.md).
 | [`S3`](S3-unbounded-fee.md) | Medium | Nothing bounds the fee on a transaction the sweep asks a user to sign | **Fixed** `0be86c7` / `2aad22b` / contract |
 | [`S4`](S4-forfeit-lacks-evaluation-veto.md) | Medium | The evaluation veto guards the opt-in path but not the automatic one | **Fixed** `2aad22b` / `9320ae2` |
 | [`S5`](S5-malformed-evaluation-raises.md) | Info | A malformed evaluation took the whole sweep down rather than degrading | **Fixed** `cc9a4ff` / `d1365dc` |
+| [`S6`](S6-convert-path-unchecked.md) | Medium | The conversion path is checked by nothing the engine does not choose | **Open** |
 
-None was reachable by an unprivileged remote attacker: `S2` and `S3` needed the
-engine's response to be wrong, and `S4` needed only a wrong price. Each of those
-three is rated Medium because it defeated a control built specifically to hold
-under those conditions, and because the value each exposed was unbounded.
+None was reachable by an unprivileged remote attacker: `S2`, `S3` and `S6` need
+the engine's response to be wrong, and `S4` needed only a wrong price. Each of
+those four is rated Medium because it defeated a control built specifically to
+hold under those conditions, and because the value each exposed was unbounded.
 
 `S5` is Informational and kept separate on purpose: it moves no value, and
 grading it alongside three findings that could hand a holding to the wrong
