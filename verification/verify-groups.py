@@ -5,7 +5,7 @@ The third verifier, and the first that checks the contract's behaviour rather
 than its source. `verify.sh` reads `router_app.py` and `verify-sweep.sh` reads
 the planner and the browser control; both answer "does the code say this?".
 This one answers "did the chain do this?", against seven groups that executed
-on mainnet on 2026-08-30 for a caller who is not the admin.
+on mainnet on 2026-08-31 for a caller who is not the admin.
 
 That distinction is the reason it exists. Five of the six audits in this series
 reasoned entirely from source, and the two errors that mattered most - a
@@ -14,11 +14,11 @@ recorded as removed when it was not - are both facts about a *running system*
 that no amount of source reading would have settled.
 
 Usage:
-    python3 verify-groups.py                     # offline, 38 checks
+    python3 verify-groups.py                     # offline, 58 checks
     python3 verify-groups.py --strict            # exit 1 on the first failure
 
     ALGOD_URL=http://127.0.0.1:8085 ALGOD_TOKEN=... python3 verify-groups.py
-        # adds the 9 checks that need a node, instead of reporting them SKIP
+        # adds the 4 checks that need a node, instead of reporting them SKIP
 
 It reads only, submits nothing, and needs no key. The node, when given one, is
 read for asset creators, application creators and whether an application still
@@ -183,10 +183,25 @@ def read_floor(note):
 
 
 def paid_out(group, asset):
-    """What the router's inner transactions paid the caller, in `asset`."""
+    """What the router's inner transactions paid the caller, in `asset`.
+
+    Asset 0 is ALGO, which is not an ASA: the router pays it with a `pay`
+    inner, so reading only `axfer` would return 0 for an ALGO-terminating
+    route and report a floor breach that did not happen. Every group in this
+    evidence settles in USDC, so this arm is latent - but the fee loop below
+    already reads `pay` inners, and the asymmetry is the kind of thing this
+    script exists to not have.
+    """
     total = 0
     for txn in group:
         for inner in inners(txn):
+            if asset == 0:
+                if inner["tx-type"] != "pay":
+                    continue
+                payment = inner["payment-transaction"]
+                if inner["sender"] == ROUTER_ADDRESS and payment["receiver"] == CALLER:
+                    total += payment["amount"]
+                continue
             if inner["tx-type"] != "axfer":
                 continue
             transfer = inner["asset-transfer-transaction"]
@@ -328,8 +343,18 @@ for name in routed:
     )
     # M2, on chain: the note names a group index per route call, and the
     # funding transfer for that call must sit immediately before it.
+    #
+    # The count is checked first because `all()` over an empty table is True:
+    # if the note's offsets ever drift, `inputs` comes back empty and the
+    # claim below would pass having examined nothing.
+    check(f"{name}: the note names at least one funded input", True,
+          len(floor["inputs"]) >= 1)
     adjacent = all(
-        group[index]["tx-type"] == "appl"
+        # index 0 has nothing before it to be funded by; without this,
+        # `group[index - 1]` is `group[-1]` and silently reads the last
+        # transaction in the group.
+        index >= 1
+        and group[index]["tx-type"] == "appl"
         and app_id(group[index]) == ROUTER_APP
         and group[index - 1]["tx-type"] == "axfer"
         and group[index - 1]["asset-transfer-transaction"]["amount"] == amount
@@ -376,18 +401,37 @@ check("every holding the router opened, it closed in the same group", True, tran
 section("group hygiene - _assert_group_is_clean, on chain")
 
 every = [txn for top in everything for txn in walk(top)]
+
+
+def rekeys(txn):
+    return bool(txn.get("rekey-to"))
+
+
+def closes_algo(txn):
+    return bool((txn.get("payment-transaction") or {}).get("close-remainder-to"))
+
+
+# Neither `rekey-to` nor `close-remainder-to` occurs anywhere in this evidence,
+# so both claims below are true of a corpus that never exercises them: they
+# would read the same if the predicates could not detect a rekey at all. The
+# two controls make the detectors demonstrate themselves on a transaction built
+# to trip them, so a passing claim means "looked, and found none".
+check("the rekey detector fires on a transaction that rekeys", True,
+      rekeys({"rekey-to": ADMIN}) and not rekeys({}))
+check("the ALGO-close detector fires on a transaction that closes", True,
+      closes_algo({"payment-transaction": {"close-remainder-to": ADMIN}})
+      and not closes_algo({"payment-transaction": {}})
+      and not closes_algo({}))
+check("transactions examined for both", 183 + len(everything), len(every))
 check(
     "no transaction in any group rekeys an account",
     True,
-    all(not txn.get("rekey-to") for txn in every),
+    all(not rekeys(txn) for txn in every),
 )
 check(
     "no transaction in any group closes an ALGO balance",
     True,
-    all(
-        not (txn.get("payment-transaction") or {}).get("close-remainder-to")
-        for txn in every
-    ),
+    all(not closes_algo(txn) for txn in every),
 )
 # `asset_close_to` is the interesting one: the guard refuses it on every
 # transaction of a routed group, so the only closes in this evidence must be
@@ -484,7 +528,7 @@ section("the fee schedule, recomputed from the state deltas")
 
 # `_skim` is only ever called on ALGO, so a route with no ALGO leg accrues
 # nothing. Both cases occur here, and both are checked.
-accrued, mismatched, algoless = 0, [], 0
+accrued, mismatched, algoless, rates = 0, [], 0, []
 for name, _ in GROUPS:
     for txn in groups[name]:
         if app_id(txn) != ROUTER_APP:
@@ -524,6 +568,7 @@ for name, _ in GROUPS:
         want = received * FEE_BPS // BASIS_POINTS
         if want != taken:
             mismatched.append((name, txn["id"], f"want {want} took {taken}"))
+        rates.append(taken * BASIS_POINTS / received)
 
 check(f"every fee taken is exactly floor(ALGO leg x {FEE_BPS} / {BASIS_POINTS})", [], mismatched)
 check("routes with no ALGO leg accrued nothing, as _skim's docstring says",
@@ -533,7 +578,17 @@ print(f"        accrued across the whole session: {accrued:,} microALGO")
 network = sum(sum(t["fee"] for t in g) for g in groups.values())
 print(f"        network fees over the same session: {network:,} microALGO "
       f"({network / accrued:.0f}x the platform's cut)")
-check(f"the rate charged never exceeded MAX_FEE_BPS ({MAX_FEE_BPS})", True, FEE_BPS <= MAX_FEE_BPS)
+# Measured from the deltas, not asserted between two constants. This read
+# `FEE_BPS <= MAX_FEE_BPS` - 5 <= 100, both declared at the top of this file -
+# which is a statement about the source of this script, not about what the
+# deployment charged, and could not fail.
+check("route calls that took a fee, so there is a rate to check", True, len(rates) >= 1)
+check(
+    f"the rate actually charged never exceeded MAX_FEE_BPS ({MAX_FEE_BPS})",
+    True,
+    bool(rates) and max(rates) <= MAX_FEE_BPS,
+)
+print(f"        dearest rate observed: {max(rates):.4f} bps over {len(rates)} fee(s)")
 
 # ===========================================================================
 section("S2 - every forfeit went to the asset's creator")

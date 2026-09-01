@@ -17,18 +17,19 @@ router checkout, since that is what produces the file they read.
 
 ```
 router:   <router-checkout>
-revision: a6b9df6
-tree:     2 file(s) modified
-date:     2026-09-01 09:34:26Z
+revision: 657c9ff
+tree:     1 file(s) modified
+date:     2026-09-01 18:50:52Z
 
 == C1  convert_and_distribute is admin-only and reads its pool from state ==
   PASS  admin assertion exists                                     12 occurrence(s)
   PASS  same-group approval refused                                2 occurrence(s)
-  PASS  conversion pool is not a parameter                         0
+  PASS  conversion pool is not a parameter                         batch,minimum_out
 
 == H1  the floor is co-signed, not supplied by the caller ==
   PASS  floor derived from the signed note                         4 occurrence(s)
-  PASS  route/route3 take no minimum_received parameter            0
+  PASS  route takes no minimum_received parameter                  payment,first_leg,second_leg,asset_in,middle,asset_out
+  PASS  route3 takes no minimum_received parameter                 payment,first_leg,second_leg,third_leg,asset_in,first_middle,second_middle,asset_out
   PASS  quote authorisation is a pool_budget call                  2 occurrence(s)
 
 == M4  no provider's pool application is the caller's to choose ==
@@ -81,7 +82,7 @@ date:     2026-09-01 09:34:26Z
   note  tests collected: 999
   note  tests/test_sweep.py collects: 140  (audit v5 claimed 982)
 
-passed 38, failed 0
+passed 39, failed 0, skipped 0
 ```
 
 ## What is deliberately not in here

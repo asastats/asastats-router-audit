@@ -25,6 +25,7 @@ STRICT=""
 
 PASS=0
 FAIL=0
+SKIP=0
 
 if [ ! -f "${ROUTER}/contracts/router_app.py" ]; then
     echo "router checkout not found at: ${ROUTER}"
@@ -45,6 +46,42 @@ check () {
         FAIL=$((FAIL + 1))
         [ -n "${STRICT}" ] && exit 1
     fi
+}
+
+# skip <label> <why>   — counted, because a check that quietly does not run is
+# how the previous audits went wrong
+skip () {
+    local label="$1" why="$2"
+    printf '  SKIP  %-58s %s\n' "${label}" "${why}"
+    SKIP=$((SKIP + 1))
+}
+
+# params <method>   — the parameter names of one contract method, in order.
+#
+# Parsed, not grepped. The grep this replaced looked for `minimum_received` on
+# the same line as `def route(`, and `route` is declared one parameter per
+# line - so it matched nothing whatever the signature said, and the check that
+# H1 rests on could not fail. Reintroducing the caller-supplied floor left it
+# reporting PASS. `ast` reads the signature the compiler reads.
+params () {
+    python3 - "${CONTRACT}" "$1" <<'PY'
+import ast, sys
+
+source, want = sys.argv[1], sys.argv[2]
+found = [
+    node
+    for node in ast.walk(ast.parse(open(source).read()))
+    if isinstance(node, ast.FunctionDef) and node.name == want
+]
+if not found:
+    print(f"no method named {want}")
+elif len(found) > 1:
+    print(f"{len(found)} methods named {want}")
+else:
+    args = found[0].args
+    named = args.posonlyargs + args.args + args.kwonlyargs
+    print(",".join(a.arg for a in named if a.arg != "self"))
+PY
 }
 
 # present <label> <pattern>   — the pattern must appear at least once
@@ -71,14 +108,18 @@ echo
 echo "== C1  convert_and_distribute is admin-only and reads its pool from state =="
 present "admin assertion exists"            'Txn\.sender == self\.admin'
 present "same-group approval refused"       '_assert_no_conversion_pool_approval'
-check   "conversion pool is not a parameter" "0" \
-        "$(grep -cE 'def convert_and_distribute\(self, batch: UInt64, minimum_out: UInt64, *(leg|pool)' "${CONTRACT}")"
+check   "conversion pool is not a parameter" "batch,minimum_out" \
+        "$(params convert_and_distribute)"
 
 echo
 echo "== H1  the floor is co-signed, not supplied by the caller =="
 present "floor derived from the signed note" '_signed_floor'
-check   "route/route3 take no minimum_received parameter" "0" \
-        "$(grep -cE 'def route3?\(.*minimum_received' "${CONTRACT}")"
+check   "route takes no minimum_received parameter" \
+        "payment,first_leg,second_leg,asset_in,middle,asset_out" \
+        "$(params route)"
+check   "route3 takes no minimum_received parameter" \
+        "payment,first_leg,second_leg,third_leg,asset_in,first_middle,second_middle,asset_out" \
+        "$(params route3)"
 present "quote authorisation is a pool_budget call" 'POOL_BUDGET_SIGNATURE'
 
 echo
@@ -142,10 +183,13 @@ if [ -f "${MANIFEST}" ]; then
               "$(sha256sum "${SWEPT}" | cut -d' ' -f1)"
         check "and it is 4,768 TEAL lines" "4768" "$(wc -l < "${SWEPT}")"
     else
-        echo "  SKIP  the swept program is the deployed program           run scripts/tealer.sh first"
+        skip "the swept program is the deployed program" "run scripts/tealer.sh first"
+        skip "and it is 4,768 TEAL lines" "run scripts/tealer.sh first"
     fi
 else
-    echo "  SKIP  mainnet manifest                                      not at ${MANIFEST}"
+    skip "the mainnet manifest's eight readings" "not at ${MANIFEST}"
+    skip "the swept program is the deployed program" "no manifest to compare against"
+    skip "and it is 4,768 TEAL lines" "no manifest to compare against"
 fi
 
 echo
@@ -171,5 +215,5 @@ if command -v python3 >/dev/null 2>&1; then
 fi
 
 echo
-echo "passed ${PASS}, failed ${FAIL}"
+echo "passed ${PASS}, failed ${FAIL}, skipped ${SKIP}"
 [ "${FAIL}" -eq 0 ] || exit 1

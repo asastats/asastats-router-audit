@@ -60,9 +60,30 @@ check () {
     fi
 }
 
+# skip <label> <why> [count]   — `count` is how many checks did not run, so the
+# tally counts checks rather than SKIP lines.
 skip () {
     printf '  SKIP  %-56s %s\n' "$1" "$2"
-    SKIP=$((SKIP + 1))
+    SKIP=$((SKIP + ${3:-1}))
+}
+
+# method_body <file> <name>   — one method, to the next sibling at the same
+# indent. `sed -n '/def close_holding/,/def route/p'` spanned 822 lines of
+# router_app.py, so "close_holding is NOT paused" was really asserting that a
+# third of the contract never mentions `self.paused`; and any range whose
+# opening anchor stops matching yields no lines at all, which a `want=0` check
+# reads as a pass. Both are why this is scoped and anchored instead.
+method_body () {
+    awk -v want="    def $2(" '
+        substr($0, 1, length(want)) == want { inside = 1; print; next }
+        inside && /^    (@|def )/ { exit }
+        inside { print }
+    ' "$1"
+}
+
+# anchored <label> <file> <name>   — the method the next check reads must exist
+anchored () {
+    check "$1" "1" "$(method_body "$2" "$3" | grep -c "    def $3(")"
 }
 
 WORK="$(mktemp -d)"
@@ -161,13 +182,15 @@ if [ -n "${HAVE_JS}" ]; then
     check "an unreadable asset refuses (fails closed)" \
         "refused" "$(said chain.unreadable)"
 else
-    skip "whitelist and chain cases" "needs python+algosdk and node"
+    skip "whitelist and chain cases" "needs python+algosdk and node" 7
 fi
 
 check "signAction runs the chain check too" "1" \
     "$(grep -c 'problems = await forfeitTargetProblems(' "${WIDGET}")"
-check "the shipped wallet bundle exposes assetCreator" "1" \
-    "$(grep -c 'assetCreator' "${BUNDLE}" 2>/dev/null || echo 0)"
+# `grep -c` counts lines, and the shipped bundle is minified onto very few of
+# them, so an exact want of 1 measured the minifier rather than the export.
+check "the shipped wallet bundle exposes assetCreator" "yes" \
+    "$(grep -qF 'assetCreator' "${BUNDLE}" 2>/dev/null && echo yes || echo no)"
 
 echo
 echo "S3 — is the fee bounded?"
@@ -178,6 +201,8 @@ check "closeOutProblems reads txn.fee" "2" \
 if [ -n "${HAVE_JS}" ]; then
     check "a close-out with a 5 ALGO fee is refused" \
         "refused" "$(said whitelist.fat_fee)"
+else
+    skip "a close-out with a 5 ALGO fee is refused" "needs python+algosdk and node"
 fi
 check "the cap is a fraction of what a close-out returns" "1" \
     "$(grep -c 'var MAX_CLOSE_OUT_FEE = HOLDING_MINIMUM_BALANCE / 10;' "${WIDGET}")"
@@ -185,12 +210,18 @@ check "summaryFigures renders the fee" "1" \
     "$(sed -n '/function summaryFigures/,/^}/p' "${WIDGET}" | grep -c 'Network fees')"
 check "summary.recoverable is net of fees" "1" \
     "$(grep -c '"recoverable": (closes + conversions) \* HOLDING_MINIMUM_BALANCE - fees,' "${SWEEP}")"
-check "the contract's hygiene guard still checks its three fields" "3" \
-    "$(sed -n '/def _assert_group_is_clean/,/def _signed_floor/p' "${CONTRACT}" | grep -c 'Global.zero_address$')"
+anchored "the hygiene guard is there to be read" "${CONTRACT}" _assert_group_is_clean
+# Counted one field at a time: `grep -c 'a\|b\|c'` counts matching *lines*, so
+# three lines all naming the same field satisfied a want of 3 just as well.
+for field in rekey_to close_remainder_to asset_close_to; do
+    check "the hygiene guard still checks ${field}" "1" \
+        "$(method_body "${CONTRACT}" _assert_group_is_clean \
+           | grep -c "transaction.${field} == Global.zero_address$")"
+done
 check "the hygiene guard now totals the group's fee" "1" \
-    "$(sed -n '/def _assert_group_is_clean/,/def _signed_floor/p' "${CONTRACT}" | grep -c 'paid += transaction.fee')"
+    "$(method_body "${CONTRACT}" _assert_group_is_clean | grep -c 'paid += transaction.fee')"
 check "...and refuses a group that overpays" "1" \
-    "$(sed -n '/def _assert_group_is_clean/,/def _signed_floor/p' "${CONTRACT}" | grep -c 'assert paid <= MAX_GROUP_FEE')"
+    "$(method_body "${CONTRACT}" _assert_group_is_clean | grep -c 'assert paid <= MAX_GROUP_FEE')"
 
 # The ceiling has to clear what a legitimate route can legitimately need, or
 # the contract becomes the thing that breaks every swap through it.
@@ -250,6 +281,16 @@ sp = client.suggested_params()
 auth = info.get("auth-addr")
 
 def run(fee, asset, revoke=None):
+    """accepted, or refused with the chain's own reason.
+
+    This used to be wrapped in `except Exception: return False`, and False was
+    rendered as "refused" - so a transport error, an expired token or a
+    malformed request was recorded as the chain enforcing the bound. That is
+    the same mistake as the missing `sgnr` above, one layer down: the earlier
+    fix stopped one cause of "asked wrongly", this stops it being reported as
+    "asked, and refused". Anything that is not an answer from algod now raises,
+    and the caller reports SKIP.
+    """
     txn = AssetTransferTxn(sender=address, receiver=address, amt=0, index=asset,
         close_assets_to=address, revocation_target=revoke,
         sp=SuggestedParams(fee=fee, first=sp.first, last=sp.last, gh=sp.gh,
@@ -262,28 +303,43 @@ def run(fee, asset, revoke=None):
     request = models.SimulateRequest(
         txn_groups=[models.SimulateRequestTransactionGroup(txns=signed)],
         allow_empty_signatures=True)
-    try:
-        return not client.simulate_transactions(request)["txn-groups"][0].get(
-            "failure-message", "")
-    except Exception:
-        return False
+    failure = client.simulate_transactions(request)["txn-groups"][0].get(
+        "failure-message", "")
+    return "accepted" if not failure else "refused", failure
 
 if not empty:
     print("noempty")
 else:
-    print("whole=" + ("accepted" if run(spendable, empty[0]) else "refused"))
-    print("clawback=" + ("accepted" if run(1000, empty[0], address) else "refused"))
+    for label, args in (("whole", (spendable, empty[0])),
+                        ("clawback", (1000, empty[0], address))):
+        verdict, why = run(*args)
+        print(f"{label}={verdict}")
+        print(f"{label}.reason={why}")
 PY
-    if "${PYTHON}" "${WORK}/sim.py" > "${WORK}/sim.txt" 2>/dev/null; then
+    if ! "${PYTHON}" "${WORK}/sim.py" > "${WORK}/sim.txt" 2>"${WORK}/sim.err"; then
+        skip "mainnet simulation" "could not ask: $(tail -1 "${WORK}/sim.err")" 3
+    elif [ "$(cat "${WORK}/sim.txt")" = "noempty" ]; then
+        # The account has nothing to close, so neither bound was exercised.
+        # This case was already detected in Python and then read as two empty
+        # extractions, which the checks recorded as failures.
+        skip "mainnet simulation" "${SWEEP_ADDRESS} holds no empty asset" 3
+    else
         check "the chain itself still bounds a fee only by the balance" \
             "accepted" "$(sed -n 's/^whole=//p' "${WORK}/sim.txt")"
         check "a close-out carrying asnd is refused by the chain" \
             "refused" "$(sed -n 's/^clawback=//p' "${WORK}/sim.txt")"
-    else
-        skip "mainnet simulation" "simulate call failed"
+        # ...and refused over the clawback field, not for some unrelated
+        # reason the group happened to also have. A refusal whose reason is
+        # empty or is about authorisation is not evidence for this claim.
+        check "...and refused for carrying asnd, not for anything else" "yes" \
+            "$(sed -n 's/^clawback.reason=//p' "${WORK}/sim.txt" \
+               | grep -qiE 'clawback|asset sender|revocation|not the clawback' \
+               && echo yes || echo no)"
+        printf '        chain said: %s\n' \
+            "$(sed -n 's/^clawback.reason=//p' "${WORK}/sim.txt")"
     fi
 else
-    skip "mainnet simulation" "set ALGOD_URL and SWEEP_ADDRESS"
+    skip "mainnet simulation" "set ALGOD_URL and SWEEP_ADDRESS" 3
 fi
 
 echo
@@ -340,8 +396,9 @@ check "both route entry points honour the pause" "2" \
     "$(grep -c 'assert not self.paused, "routing is paused"' "${CONTRACT}")"
 check "the pause is admin-only" "1" \
     "$(grep -c 'only the admin may pause routing' "${CONTRACT}")"
+anchored "close_holding is there to be checked" "${CONTRACT}" close_holding
 check "close_holding is NOT paused, so recovery survives it" "0" \
-    "$(sed -n '/def close_holding/,/def route/p' "${CONTRACT}" | grep -c 'self.paused')"
+    "$(method_body "${CONTRACT}" close_holding | grep -c 'self.paused')"
 # There is no input cap, and that is a decision rather than an omission: a
 # bound in the input asset's base units cannot state a value -- the same number
 # is 50,000 ALGO and 50,000 USDC -- and putting it in value terms needs a price
@@ -354,8 +411,9 @@ check "no input cap, which could not have meant one thing" "0" \
 # LocalNet fixtures used to pin the old pair by hand, and getting it wrong is
 # an opaque HTTP 400 from the create rather than anything that names state --
 # so nothing should restate it now.
+anchored "__init__ is there to be counted" "${CONTRACT}" __init__
 check "the contract carries three global uints" "3" \
-    "$(sed -n '/def __init__/,/def set_paused/p' "${CONTRACT}" | grep -c 'UInt64(')"
+    "$(method_body "${CONTRACT}" __init__ | grep -c 'UInt64(')"
 check "the test harness takes the schema from the compiler" "1" \
     "$(grep -c 'CompiledContract = namedtuple' "${ROUTER}/tests/localnet.py")"
 check "no fixture pins a schema by hand any more" "0" \
@@ -442,6 +500,8 @@ const group = data.cases.honest.txns;
 JS
     check "neither browser check raises on any shape" "degrades" \
         "$(node "${WORK}/shapes.js" 2>/dev/null || echo unknown)"
+else
+    skip "neither browser check raises on any shape" "needs python+algosdk and node"
 fi
 
 echo
@@ -453,8 +513,13 @@ check "signAction dispatches on the engine's own action.kind" "1" \
     "$(sed -n '/^async function signAction/,/^}/p' "${WIDGET}" | grep -c 'if (action.kind === "convert") {')"
 check "...and its convert branch no longer trusts it" "1" \
     "$(sed -n '/if (action.kind === "convert") {/,/^  }/p' "${WIDGET}" | grep -c 'routedGroupProblems(action.transactions, routerApp)')"
-check "the browser mirrors the contract's three hygiene fields" "3" \
-    "$(sed -n '/^function routedGroupProblems/,/^}/p' "${WIDGET}" | grep -c 'txn.rekey\|txn.close\|txn.aclose')"
+check "routedGroupProblems is there to be read" "1" \
+    "$(grep -c '^function routedGroupProblems' "${WIDGET}")"
+for field in rekey close aclose; do
+    check "the browser mirrors the contract's ${field} field" "1" \
+        "$(sed -n '/^function routedGroupProblems/,/^}/p' "${WIDGET}" \
+           | grep -c "txn\.${field}\b")"
+done
 check "...and the contract's group fee ceiling, by its number" "1" \
     "$(grep -c 'var MAX_GROUP_FEE = 1000000;' "${WIDGET}")"
 check "which is the number the contract actually uses" "1" \
@@ -465,13 +530,24 @@ check "a group that will not decode is refused, not skipped" "2" \
 # The contract would refuse these groups. It only ran if it was called, which
 # was the whole of S6 - the same structural fact S3 §7 records for close-outs.
 check "the hygiene guard refuses closes, when it runs" "2" \
-    "$(sed -n '/def _assert_group_is_clean/,/def _signed_floor/p' "${CONTRACT}" | grep -c 'this group closes')"
+    "$(method_body "${CONTRACT}" _assert_group_is_clean | grep -c 'this group closes')"
 
 if [ -f "${SWAPBRIDGE}" ]; then
-    check "signAndSendPartial checks quote placement and signatures" "3" \
-        "$(sed -n '/export async function signAndSendPartial/,/^}/p' "${SWAPBRIDGE}" | grep -c 'Quote authorization must be the final transaction\|Backend signature does not match the grouped transaction\|Backend quote signature is missing')"
+    check "signAndSendPartial is there to be read" "1" \
+        "$(grep -c 'export async function signAndSendPartial' "${SWAPBRIDGE}")"
+    # One at a time: the alternation this replaced was satisfied by any three
+    # matching lines, including three copies of the same message.
+    while IFS='|' read -r what message; do
+        check "signAndSendPartial checks ${what}" "1" \
+            "$(sed -n '/export async function signAndSendPartial/,/^}/p' "${SWAPBRIDGE}" \
+               | grep -cF "${message}")"
+    done <<'BRIDGE'
+quote placement|Quote authorization must be the final transaction
+the signature matches|Backend signature does not match the grouped transaction
+the signature is present|Backend quote signature is missing
+BRIDGE
 else
-    skip "the bridge's partial-group checks" "set SWAPBRIDGE=/path/to/swapBridge.ts"
+    skip "the bridge's partial-group checks" "set SWAPBRIDGE=/path/to/swapBridge.ts" 4
 fi
 
 echo
@@ -487,8 +563,13 @@ check "the app id is page context, never the plan response" "1" \
     "$(grep -c 'data-router-app="{{ router_app_id }}"' "${WIDGETS}/inhouse/dustsweep/templates/dustsweep/index.html")"
 check "...handed down by the view, not read from the engine" "1" \
     "$(grep -c 'context\["router_app_id"\] = getattr(settings, "ROUTER_APP_ID", ROUTER_APP_ID)' "${WIDGETS}/inhouse/dustsweep/views.py")"
-check "...and the widget carries the same id as a fallback" "2" \
-    "$(cat "${WIDGET}" "${WIDGETS}/inhouse/dustsweep/views.py" | grep -c '3689591968')"
+# Counted per file. Concatenating them first meant two occurrences in views.py
+# and none in the widget satisfied a want of 2, which is the opposite of what
+# "the widget carries the same id as a fallback" claims.
+check "...and the widget carries the same id as a fallback" "1" \
+    "$(grep -c '3689591968' "${WIDGET}")"
+check "...as does the view that hands it down" "1" \
+    "$(grep -c '3689591968' "${WIDGETS}/inhouse/dustsweep/views.py")"
 check "which is the application the audit pins to mainnet" "1" \
     "$(grep -c '^Deployments.*3689591968\|mainnet .3689591968' "${HERE}/../REPORT.md")"
 
@@ -531,8 +612,14 @@ echo "-------------------------------------------------------------------------"
 
 check "the route binds only the transaction before it" "1" \
     "$(grep -c 'input must immediately precede the route' "${CONTRACT}")"
+# Both of the next two assert an absence, so both need their subject pinned
+# first: an anchor that stops matching yields an empty range, and `grep -c` on
+# an empty stream prints 0 -- the wanted answer, for the wrong reason.
+anchored "the hygiene guard is still the thing being read" "${CONTRACT}" _assert_group_is_clean
 check "the hygiene guard reads no amount and no receiver" "0" \
-    "$(sed -n '/def _assert_group_is_clean/,/def _signed_floor/p' "${CONTRACT}" | grep -c 'asset_amount\|asset_receiver')"
+    "$(method_body "${CONTRACT}" _assert_group_is_clean | grep -c 'asset_amount\|asset_receiver')"
+check "routedGroupProblems is still the thing being read" "1" \
+    "$(grep -c '^function routedGroupProblems' "${WIDGET}")"
 check "and the browser bounds no receiver either" "0" \
     "$(sed -n '/^function routedGroupProblems/,/^}/p' "${WIDGET}" | grep -c 'arcv\|rcv')"
 
@@ -560,6 +647,8 @@ others = {
 print(len(others))
 ESCROW
 )"
+else
+    skip "a conversion that executed pays a non-router address" "no evidence/groups"
 fi
 
 # **The finding demonstrated, not described.** A conversion that executed on
@@ -622,12 +711,22 @@ fi
 # Why the tempting fix - committing the group's shape in the co-signed note -
 # does not work: the engine holds the signing key in its own process, so an
 # engine that can build a hostile group can sign a note describing it.
-check "the quote signer key is read in the engine's own process" "2" \
-    "$(grep -c 'private_key = _private_key(' "${ENGINE}/core/quote_signer.py" 2>/dev/null; true)"
-check "...from a path on the engine's own host" "2" \
-    "$(grep -c 'signer_key_path(network)' "${ENGINE}/core/quote_signer.py" 2>/dev/null; true)"
-check "...and it validates group ids, not group composition" "0" \
-    "$(sed -n '/^def _validate_group/,/^def sign_quote_authorization/p' "${ENGINE}/core/quote_signer.py" 2>/dev/null | grep -c 'receiver\|amount'; true)"
+SIGNER="${ENGINE}/core/quote_signer.py"
+if [ -f "${SIGNER}" ]; then
+    check "the quote signer key is read in the engine's own process" "2" \
+        "$(grep -c 'private_key = _private_key(' "${SIGNER}")"
+    check "...from a path on the engine's own host" "2" \
+        "$(grep -c 'signer_key_path(network)' "${SIGNER}")"
+    # This one wants 0, and used to get it from a missing file: the `2>/dev/null`
+    # hid sed's error and `grep -c` counted an empty stream as 0. Anchored now.
+    check "_validate_group is there to be read" "1" \
+        "$(grep -c '^def _validate_group' "${SIGNER}")"
+    check "...and it validates group ids, not group composition" "0" \
+        "$(sed -n '/^def _validate_group/,/^def sign_quote_authorization/p' "${SIGNER}" \
+           | grep -c 'receiver\|amount')"
+else
+    skip "the quote signer's key handling and group validation" "no ${SIGNER}" 4
+fi
 
 # The lookup that used to hang forever now refuses instead.
 check "a creator lookup that never answers times out" "1" \

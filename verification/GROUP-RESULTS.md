@@ -23,7 +23,7 @@ admin. See [evidence/README.md](../evidence/README.md) for what that can and
 cannot settle.
 
 ```
-date:     2026-09-01 08:07:26Z
+date:     2026-09-01 18:50:52Z
 evidence: 7 groups, 97 top-level transactions, rounds 64591388-64591609
 account:  read at round 64620255
 ```
@@ -51,6 +51,7 @@ H1 - the floor is co-signed, and it bound
   PASS  swap.json: the quote signer pays no fee of its own         0
   PASS  swap.json: received >= the signed floor                    True
         floor 10,916,395,835   received 10,971,093,673   +0.501%
+  PASS  swap.json: the note names at least one funded input        True
   PASS  swap.json: every named input is funded by the transaction before it True
   PASS  swap.json: the asserting index is the last route call      11
   PASS  sweep-3-convert.json: exactly one co-signed floor          1
@@ -58,6 +59,7 @@ H1 - the floor is co-signed, and it bound
   PASS  sweep-3-convert.json: the quote signer pays no fee of its own 0
   PASS  sweep-3-convert.json: received >= the signed floor         True
         floor  4,741,776,766   received  4,787,285,941   +0.960%
+  PASS  sweep-3-convert.json: the note names at least one funded input True
   PASS  sweep-3-convert.json: every named input is funded by the transaction before it True
   PASS  sweep-3-convert.json: the asserting index is the last route call 11
   PASS  sweep-4-convert.json: exactly one co-signed floor          1
@@ -65,6 +67,7 @@ H1 - the floor is co-signed, and it bound
   PASS  sweep-4-convert.json: the quote signer pays no fee of its own 0
   PASS  sweep-4-convert.json: received >= the signed floor         True
         floor  1,101,430,935   received  1,112,064,251   +0.965%
+  PASS  sweep-4-convert.json: the note names at least one funded input True
   PASS  sweep-4-convert.json: every named input is funded by the transaction before it True
   PASS  sweep-4-convert.json: the asserting index is the last route call 8
   PASS  sweep-6-convert.json: exactly one co-signed floor          1
@@ -72,6 +75,7 @@ H1 - the floor is co-signed, and it bound
   PASS  sweep-6-convert.json: the quote signer pays no fee of its own 0
   PASS  sweep-6-convert.json: received >= the signed floor         True
         floor  2,620,214,551   received  2,633,381,451   +0.503%
+  PASS  sweep-6-convert.json: the note names at least one funded input True
   PASS  sweep-6-convert.json: every named input is funded by the transaction before it True
   PASS  sweep-6-convert.json: the asserting index is the last route call 10
 
@@ -83,6 +87,9 @@ the four properties REPORT section 2 rests on
 
 group hygiene - _assert_group_is_clean, on chain
 -------------------------------------------------------------------------
+  PASS  the rekey detector fires on a transaction that rekeys      True
+  PASS  the ALGO-close detector fires on a transaction that closes True
+  PASS  transactions examined for both                             280
   PASS  no transaction in any group rekeys an account              True
   PASS  no transaction in any group closes an ALGO balance         True
   PASS  a close-out never rides in the same group as a route       []
@@ -112,7 +119,9 @@ the fee schedule, recomputed from the state deltas
         2 route call(s) never touched ALGO and paid no platform fee
         accrued across the whole session: 1,529 microALGO
         network fees over the same session: 280,000 microALGO (183x the platform's cut)
-  PASS  the rate charged never exceeded MAX_FEE_BPS (100)          True
+  PASS  route calls that took a fee, so there is a rate to check   True
+  PASS  the rate actually charged never exceeded MAX_FEE_BPS (100) True
+        dearest rate observed: 4.9913 bps over 12 fee(s)
 
 S2 - every forfeit went to the asset's creator
 -------------------------------------------------------------------------
@@ -129,8 +138,7 @@ the sweep reconciles against the account it swept
         minimum balance released: 4,700,000 microALGO against 280,000 in fees
 
 -------------------------------------------------------------------------
-  54 passed, 0 failed, 0 skipped
-
+  62 passed, 0 failed, 0 skipped
 ```
 
 ## Mutation-tested

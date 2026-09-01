@@ -8,7 +8,7 @@ ALGOD_URL=https://your-node SWEEP_ADDRESS=SOMEADDRESS… \
     ./verify-sweep.sh
 ```
 
-Two checks need a mainnet algod. Without `ALGOD_URL` and `SWEEP_ADDRESS` they
+Three checks need a mainnet algod. Without `ALGOD_URL` and `SWEEP_ADDRESS` they
 report `SKIP`; the run below had both, so nothing was skipped. Nothing is
 submitted — the chain cases use `simulate` with `allow-empty-signatures` and no
 key.
@@ -28,6 +28,15 @@ simulate that shows the chain bounding a fee only by the balance did not set
 reported `refused` — the right word for the wrong reason, indistinguishable
 from the bound working. Fixed by carrying the account's `auth-addr` into the
 simulated signature. See [evidence/README.md §10](../evidence/README.md).
+
+**And the mechanism behind it is now closed too.** Setting `sgnr` fixed one
+cause; the `except Exception: return False` around the simulate call was the
+reason any cause read as `refused`, and a transport error or an expired token
+would have done the same thing. The call no longer swallows anything — a
+failure to ask reports `SKIP` — and the refusal is checked against the chain's
+own reason rather than only its existence, which is the `chain said:` line
+below. Both were found by reviewing this script rather than by running it,
+because a check that passes for the wrong reason has no symptom.
 
 ```
 router:   68ad254   (contract deployed as mainnet 3689591968 from 848a3a3)
@@ -50,7 +59,7 @@ S2 — is the forfeit destination bound to something outside the response?
   PASS  a bridge that cannot answer refuses (fails closed)       refused
   PASS  an unreadable asset refuses (fails closed)               refused
   PASS  signAction runs the chain check too                      1
-  PASS  the shipped wallet bundle exposes assetCreator           1
+  PASS  the shipped wallet bundle exposes assetCreator           yes
 
 S3 — is the fee bounded?
 -------------------------------------------------------------------------
@@ -59,7 +68,10 @@ S3 — is the fee bounded?
   PASS  the cap is a fraction of what a close-out returns        1
   PASS  summaryFigures renders the fee                           1
   PASS  summary.recoverable is net of fees                       1
-  PASS  the contract's hygiene guard still checks its three fields 3
+  PASS  the hygiene guard is there to be read                    1
+  PASS  the hygiene guard still checks rekey_to                  1
+  PASS  the hygiene guard still checks close_remainder_to        1
+  PASS  the hygiene guard still checks asset_close_to            1
   PASS  the hygiene guard now totals the group's fee             1
   PASS  ...and refuses a group that overpays                     1
   PASS  the ceiling clears the dearest route route_fee can return clears
@@ -68,6 +80,8 @@ S3 — what the chain would accept, unchanged by any fix (needs a node)
 -------------------------------------------------------------------------
   PASS  the chain itself still bounds a fee only by the balance  accepted
   PASS  a close-out carrying asnd is refused by the chain        refused
+  PASS  ...and refused for carrying asnd, not for anything else  yes
+        chain said: cannot close asset by clawback
 
 S4 — does a forfeit check the second opinion?
 -------------------------------------------------------------------------
@@ -83,8 +97,10 @@ Before RESTRICT_TO_ADMIN comes off — the two levers that replace it
   PASS  routing can be stopped without a redeploy                1
   PASS  both route entry points honour the pause                 2
   PASS  the pause is admin-only                                  1
+  PASS  close_holding is there to be checked                     1
   PASS  close_holding is NOT paused, so recovery survives it     0
   PASS  no input cap, which could not have meant one thing       0
+  PASS  __init__ is there to be counted                          1
   PASS  the contract carries three global uints                  3
   PASS  the test harness takes the schema from the compiler      1
   PASS  no fixture pins a schema by hand any more                0
@@ -101,19 +117,26 @@ S6 — is the conversion path checked at all?
 -------------------------------------------------------------------------
   PASS  signAction dispatches on the engine's own action.kind    1
   PASS  ...and its convert branch no longer trusts it            1
-  PASS  the browser mirrors the contract's three hygiene fields  3
+  PASS  routedGroupProblems is there to be read                  1
+  PASS  the browser mirrors the contract's rekey field           1
+  PASS  the browser mirrors the contract's close field           1
+  PASS  the browser mirrors the contract's aclose field          1
   PASS  ...and the contract's group fee ceiling, by its number   1
   PASS  which is the number the contract actually uses           1
   PASS  a group that will not decode is refused, not skipped     2
   PASS  the hygiene guard refuses closes, when it runs           2
-  PASS  signAndSendPartial checks quote placement and signatures 3
+  PASS  signAndSendPartial is there to be read                   1
+  PASS  signAndSendPartial checks quote placement                1
+  PASS  signAndSendPartial checks the signature matches          1
+  PASS  signAndSendPartial checks the signature is present       1
 
 S7 — does the conversion path require the checks to actually run?
 -------------------------------------------------------------------------
   PASS  a conversion must call a router method that guards       1
   PASS  the app id is page context, never the plan response      1
   PASS  ...handed down by the view, not read from the engine     1
-  PASS  ...and the widget carries the same id as a fallback      2
+  PASS  ...and the widget carries the same id as a fallback      1
+  PASS  ...as does the view that hands it down                   1
   PASS  which is the application the audit pins to mainnet       1
   PASS  the exempt selectors are both excluded                   2
   PASS  ...and they are the selectors the contract actually exposes ok
@@ -121,13 +144,16 @@ S7 — does the conversion path require the checks to actually run?
 S8 — what still gets through, and why the obvious rule cannot be it (OPEN)
 -------------------------------------------------------------------------
   PASS  the route binds only the transaction before it           1
+  PASS  the hygiene guard is still the thing being read          1
   PASS  the hygiene guard reads no amount and no receiver        0
+  PASS  routedGroupProblems is still the thing being read        1
   PASS  and the browser bounds no receiver either                0
   PASS  a conversion that executed pays a non-router address     1
   PASS  a genuine conversion is accepted                         accepted
   PASS  ...and so is the same group carrying a hostile transfer  accepted
   PASS  the quote signer key is read in the engine's own process 2
   PASS  ...from a path on the engine's own host                  2
+  PASS  _validate_group is there to be read                      1
   PASS  ...and it validates group ids, not group composition     0
   PASS  a creator lookup that never answers times out            1
   PASS  ...and a timeout resolves to null, so it joins the refusals 1
@@ -139,6 +165,5 @@ context
   PASS  unpriced is the only disposition that starts off         1
 
 -------------------------------------------------------------------------
-  68 passed, 0 failed, 0 skipped
-
+  84 passed, 0 failed, 0 skipped
 ```
