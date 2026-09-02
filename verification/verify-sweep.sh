@@ -448,9 +448,16 @@ echo
 echo "S5 — does a malformed payload degrade rather than raise?"
 echo "-------------------------------------------------------------------------"
 
-check "the evaluation readers share one shape-tolerant reader" "2" \
-    "$(grep -c 'for asset, item in _evaluation_items(evaluation):' "${SWEEP}")"
-check "the browser checks share one too" "2" \
+# Three each, not two. `sweep_filter` was the reader that was never hardened -
+# it read the same cache entry and reached for it directly, and it runs first,
+# so seven payload shapes the other two tolerate never reached them. It now
+# takes a list name and shares `_evaluation_items` with them, which is why the
+# pattern below allows an argument after `evaluation`.
+check "the evaluation readers share one shape-tolerant reader" "3" \
+    "$(grep -cE 'for asset, item in _evaluation_items\(evaluation[,)]' "${SWEEP}")"
+# And three in the browser since `convertedInputProblems` joined them - S8's
+# mitigation 1, which reads the same plan the other two do.
+check "the browser checks share one too" "3" \
     "$(grep -c 'planLines(described).forEach' "${WIDGET}")"
 
 cat > "${WORK}/shapes.py" <<'SHAPES'

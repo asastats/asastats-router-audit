@@ -43,10 +43,23 @@ EVIDENCE = Path(os.environ.get("EVIDENCE", HERE.parent / "evidence"))
 STRICT = "--strict" in sys.argv
 
 # ---------------------------------------------------------------------------
-# What the deployment says it is. Every one of these is a template value in
-# router/build/releases/router-mainnet-3689591968.json, not a guess.
+# What the deployment said it was when these groups ran. Every one of these is
+# a template value in router/build/releases/router-mainnet-3689591968.json,
+# not a guess.
+#
+# **These pin the evidence and do not follow the deployment.** The transactions
+# in evidence/ called 3689591968 and always will. That application has since
+# been replaced by 3692588382 and destroyed - so ROUTER_APP is now a *retired*
+# application, and any check that means "the live router" has to say so with
+# LIVE_APP instead. Conflating the two is what made the `paused` check below
+# fail on 2026-09-02: it read the evidence's application, found no global
+# state because the application no longer exists, and reported that the live
+# router lacks a key it has.
 # ---------------------------------------------------------------------------
 ROUTER_APP = 3689591968
+#: the router this repository's reports describe as live, which is a different
+#: question from which application the evidence called
+LIVE_APP = 3692588382
 RETIRED_APP = 3688554446
 ROUTER_ADDRESS = "GV27MIISIGA7GV2EHG2TM5K423VRQKQXVBXLS7WNR2IAZ73AGTEEBPMUEU"
 ADMIN = "ZRNRW3X4WMRJZLP2UZR5PECN4A23SW7QETVR4H53F6FFG3NHC6MVSLMQPM"
@@ -302,15 +315,21 @@ if ALGOD_URL:
         404,
         (retired or {}).get("__status__"),
     )
-    live = node(f"/v2/applications/{ROUTER_APP}")
+    live = node(f"/v2/applications/{LIVE_APP}")
     keys = {
         base64.b64decode(kv["key"]).decode("utf8", "replace")
         for kv in (live or {}).get("params", {}).get("global-state", [])
     }
     check("and the live one carries the `paused` key set_paused added", True, "paused" in keys)
+    check(
+        "the application the evidence called is retired too",
+        404,
+        (node(f"/v2/applications/{ROUTER_APP}") or {}).get("__status__"),
+    )
 else:
     skip("the retired application really is gone", "no ALGOD_URL")
     skip("and the live one carries the `paused` key set_paused added", "no ALGOD_URL")
+    skip("the application the evidence called is retired too", "no ALGOD_URL")
 
 # ===========================================================================
 section("H1 - the floor is co-signed, and it bound")

@@ -8,45 +8,6 @@ ALGOD_URL=https://your-node SWEEP_ADDRESS=SOMEADDRESS… \
     ./verify-sweep.sh
 ```
 
-Three checks need a mainnet algod. Without `ALGOD_URL` and `SWEEP_ADDRESS` they
-report `SKIP`; the run below had both, so nothing was skipped. Nothing is
-submitted — the chain cases use `simulate` with `allow-empty-signatures` and no
-key.
-
-**Most of these assert the fixed behaviour.** The first revision of this script
-asserted the defects and passed 23 of 23, which was the finding. `S2`–`S7` are
-closed, so each of those checks is now the regression test for one of them.
-
-**The `S8` section is the exception, and deliberately.** That finding is open,
-so its checks assert the gap: two of them run the vector against the shipped
-widget and require it to be **accepted**. The day a fix lands they fail, and
-that failure is how the finding gets closed rather than forgotten.
-
-**One check was itself wrong, and a second account is what found it.** The
-simulate that shows the chain bounding a fee only by the balance did not set
-`sgnr`, so against a *rekeyed* account it was refused for authorisation and
-reported `refused` — the right word for the wrong reason, indistinguishable
-from the bound working. Fixed by carrying the account's `auth-addr` into the
-simulated signature. See [evidence/README.md §10](../evidence/README.md).
-
-**And the mechanism behind it is now closed too.** Setting `sgnr` fixed one
-cause; the `except Exception: return False` around the simulate call was the
-reason any cause read as `refused`, and a transport error or an expired token
-would have done the same thing. The call no longer swallows anything — a
-failure to ask reports `SKIP` — and the refusal is checked against the chain's
-own reason rather than only its existence, which is the `chain said:` line
-below. Both were found by reviewing this script rather than by running it,
-because a check that passes for the wrong reason has no symptom.
-
-```
-router:   68ad254   (contract deployed as mainnet 3689591968 from 848a3a3)
-engine:   1616efc
-frontend: 0c8600b
-widgets:  4fe081b   (S6/S7 fixes merged to dust-sweep, not yet released)
-date:     2026-09-01
-network:  mainnet, account 2EVGZ4BG…GXNSIU
-```
-
 ```
 
 S2 — is the forfeit destination bound to something outside the response?
@@ -108,8 +69,8 @@ Before RESTRICT_TO_ADMIN comes off — the two levers that replace it
 
 S5 — does a malformed payload degrade rather than raise?
 -------------------------------------------------------------------------
-  PASS  the evaluation readers share one shape-tolerant reader   2
-  PASS  the browser checks share one too                         2
+  PASS  the evaluation readers share one shape-tolerant reader   3
+  PASS  the browser checks share one too                         3
   PASS  neither python reader raises on any shape                degrades
   PASS  neither browser check raises on any shape                degrades
 
@@ -166,4 +127,5 @@ context
 
 -------------------------------------------------------------------------
   84 passed, 0 failed, 0 skipped
+
 ```

@@ -1,21 +1,6 @@
-> **This sweep is of the previous program, 2026-09-02.**
->
-> It swept `3689591968`, which has since been replaced by `3692588382` and
-> destroyed. The contract gained the intermediate residue check (`83c7346`)
-> between the two, so the line count, the basic-block and dynamic-access
-> figures and the hash below all describe a program that is no longer
-> deployed. The claim this file exists to make - that the swept program *is*
-> the deployed program - is therefore **not true right now**, and
-> `verification/verify.sh` says so: it compares the manifest's
-> `approval_teal_sha256` against whatever `scripts/tealer.sh` last wrote, and
-> that check now fails rather than passing quietly.
->
-> The new program's approval TEAL is `953988d9…1684`. Re-running
-> `scripts/tealer.sh` and updating this file is what closes the gap.
-
 # Tealer static analysis
 
-Swept 2026-09-01 at revision `a6b9df6`, **4,768 TEAL lines**. Raw output:
+Swept 2026-09-02 at revision `b3d733a`, **4,892 TEAL lines**. Raw output:
 [tealer-sweep.txt](tealer-sweep.txt).
 
 ## The analysed program is the deployed program, for the first time
@@ -33,8 +18,8 @@ Since 2026-08-30 the deployment *is* the unrestricted build, so the override
 changes nothing and the two coincide:
 
 ```
-swept    build/tealer/Router.approval.teal   sha256 f568200e72799fb8…97cc8aa4
-manifest router-mainnet-3689591968.json      approval_teal_sha256 f568200e…8aa4
+swept    build/tealer/Router.approval.teal   sha256 953988d9cdae686f…379f1684
+manifest router-mainnet-3692588382.json      approval_teal_sha256 953988d9…1684
                                                                         match
 ```
 

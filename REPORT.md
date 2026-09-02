@@ -355,14 +355,14 @@ Stated plainly, because an audit's silences are where the risk lives.
 
 ## 6. Static analysis
 
-Tealer 0.1.2, every detector, **4,768 TEAL lines**, revision `a6b9df6`, swept
+Tealer 0.1.2, every detector, **4,892 TEAL lines**, revision `b3d733a`, swept
 2026-09-01. Detail in [tools/tealer.md](tools/tealer.md).
 
 **The swept program is the deployed program**, which has not been true before
 in this series. The sweep compiles with `RESTRICT_TO_ADMIN = 0` deliberately —
 the unrestricted build is the superset — and until 2026-08-30 mainnet ran the
 restricted one, so the two could only be compared by argument. They now hash
-the same: `f568200e…c8aa4`, matching `approval_teal_sha256` in
+the same: `953988d9…1684`, matching `approval_teal_sha256` in
 `router-mainnet-3692588382.json`, with `verify_deployment.py` exiting 0 against
 the deployed application. `verify.sh` checks that hash.
 
@@ -397,7 +397,7 @@ git clone <this repository>
 cd asastats-router-audit/verification
 
 ROUTER=/path/to/router ./verify.sh   # 39 checks against the source
-python3 verify-groups.py             # 62 more against what executed
+python3 verify-groups.py             # 63 more against what executed
 ```
 
 Neither needs a node or credentials. `verify-groups.py` takes four further

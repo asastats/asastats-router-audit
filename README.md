@@ -57,13 +57,13 @@ warning; it is what makes it load-bearing.** See [DISCLAIMER.md](DISCLAIMER.md).
 
 ## Check it yourself
 
-Every factual claim in the reports is a command. 185 of them:
+Every factual claim in the reports is a command. 186 of them:
 
 ```bash
 cd verification
 ROUTER=/path/to/router ./verify.sh              # the contract, from source — 39
 ROUTER=/path/to/router ./verify-sweep.sh        # the dust sweep — 84
-python3 verify-groups.py                        # what the chain did — 62
+python3 verify-groups.py                        # what the chain did — 63
 ```
 
 `verify.sh` needs no node, no credentials and no network. `verify-sweep.sh`
@@ -103,7 +103,7 @@ what was deliberately left unchecked.
 | | |
 |---|---|
 | source | `router/contracts/router_app.py`, 2,391 lines of Algorand Python |
-| compiled | TEAL v11, PuyaPy 5.9.0 — `953988d9…1684`, matching the deployment manifest. **The Tealer sweep predates this deployment**; see [tools/tealer.md](tools/tealer.md) |
+| compiled | 4,892 lines of TEAL v11, PuyaPy 5.9.0 — `953988d9…1684`, [swept clean](tools/tealer.md) and matching the deployment manifest |
 | mainnet | [`3692588382`](https://allo.info/application/3692588382) — **unrestricted**, 5 bps, deployed 2026-09-02 from `1e38529` |
 | testnet | `770893297` — unrestricted, 0 bps, deployed 2026-09-02 |
 | retired | mainnet `3689591968` and `3688554446`, testnet `770729651` and `770123816` — all four destroyed |

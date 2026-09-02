@@ -186,15 +186,15 @@ if [ -f "${MANIFEST}" ]; then
         check "the swept program is the deployed program" \
               "$(field . "['approval_teal_sha256']")" \
               "$(sha256sum "${SWEPT}" | cut -d' ' -f1)"
-        check "and it is 4,768 TEAL lines" "4768" "$(wc -l < "${SWEPT}")"
+        check "and it is 4,892 TEAL lines" "4892" "$(wc -l < "${SWEPT}")"
     else
         skip "the swept program is the deployed program" "run scripts/tealer.sh first"
-        skip "and it is 4,768 TEAL lines" "run scripts/tealer.sh first"
+        skip "and it is 4,892 TEAL lines" "run scripts/tealer.sh first"
     fi
 else
     skip "the mainnet manifest's eight readings" "not at ${MANIFEST}"
     skip "the swept program is the deployed program" "no manifest to compare against"
-    skip "and it is 4,768 TEAL lines" "no manifest to compare against"
+    skip "and it is 4,892 TEAL lines" "no manifest to compare against"
 fi
 
 echo

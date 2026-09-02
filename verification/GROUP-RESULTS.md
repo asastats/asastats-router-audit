@@ -9,29 +9,10 @@ ALGOD_URL=http://127.0.0.1:8085 ALGOD_TOKEN=… \
     python3 verify-groups.py                                 # with a node
 ```
 
-Four of these checks need a node — asset creators, application creators,
-whether the retired application is really gone, and whether the live one
-carries the `paused` key. Without `ALGOD_URL` they report `SKIP` rather than
-passing silently. The run below had one.
-
-It reads only and submits nothing. No key is needed for any of it.
-
-**These are not source checks.** `verify.sh` and `verify-sweep.sh` answer "does
-the code say this?"; this one answers "did the chain do this?", against seven
-groups that executed on mainnet on 2026-08-31 for a caller who is not the
-admin. See [evidence/README.md](../evidence/README.md) for what that can and
-cannot settle.
-
 ```
-date:     2026-09-01 18:50:52Z
-evidence: 7 groups, 97 top-level transactions, rounds 64591388-64591609
-account:  read at round 64620255
-```
-
-```
-evidence: <this repository>/evidence
+evidence: /home/ipaleka/claude/asastats-router-audit/evidence
 groups:   7
-node:     a mainnet algod
+node:     <mainnet-algod>
 
 
 the deployment these groups ran against
@@ -42,6 +23,7 @@ the deployment these groups ran against
   PASS  the caller's account is rekeyed, which the group does not disturb HGFQY4KQULWHTHCSM7A2YBWC3B3NXN36ZDBPUYYD4TAOONRH7SY63OVLDU
   PASS  the retired application really is gone                     404
   PASS  and the live one carries the `paused` key set_paused added True
+  PASS  the application the evidence called is retired too         404
 
 H1 - the floor is co-signed, and it bound
 -------------------------------------------------------------------------
@@ -138,20 +120,6 @@ the sweep reconciles against the account it swept
         minimum balance released: 4,700,000 microALGO against 280,000 in fees
 
 -------------------------------------------------------------------------
-  62 passed, 0 failed, 0 skipped
+  63 passed, 0 failed, 0 skipped
+
 ```
-
-## Mutation-tested
-
-A verifier that catches nothing passes exactly like one that catches
-everything, so each property was broken in a copy of the evidence and the run
-repeated. All six were caught, each by the check that should have caught it:
-
-| what was changed in the evidence | check that failed |
-|---|---|
-| a forfeit redirected away from the asset's creator | the chain agrees the destination is the creator |
-| the co-signed floor doubled, above what was paid out | `swap.json`: received >= the signed floor |
-| a close-out's fee raised to 0.5 ALGO | every close-out's fee is at or under `MAX_CLOSE_OUT_FEE` |
-| an inner transaction given a fee of its own | every one of them pays a zero fee |
-| the quote signer's call given a fee | `swap.json`: the quote signer pays no fee of its own |
-| a `rekey-to` added inside a routed group | no transaction in any group rekeys an account |

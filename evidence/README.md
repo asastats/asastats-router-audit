@@ -23,7 +23,7 @@ group that executed. That is what this directory is.
 
 ```sh
 python3 ../verification/verify-groups.py                # 58 checks, no node
-ALGOD_URL=… ALGOD_TOKEN=… python3 ../verification/verify-groups.py   # 62
+ALGOD_URL=… ALGOD_TOKEN=… python3 ../verification/verify-groups.py   # 63
 ```
 
 Recorded output: [GROUP-RESULTS.md](../verification/GROUP-RESULTS.md).
