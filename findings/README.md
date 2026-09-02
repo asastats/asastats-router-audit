@@ -1,7 +1,9 @@
 # Findings
 
-32 in total across seven audits: 23 raised by v1–v5 and closed, one raised by
-the contract audit, and eight by the dust sweep audit.
+41 in total across seven audits: 23 raised by v1–v5 and closed, one raised by
+the contract audit, eight by the dust sweep audit, and **nine more found on
+2026-09-02** by reading the sweep planner, the engine half that calls it and
+the widget line by line — `S9`–`S17`, all fixed.
 
 ## Open
 
@@ -16,9 +18,15 @@ a sweep legitimately pays pool escrows the browser cannot enumerate. Two partial
 mitigations are recorded in that finding, and each is explicit about what it
 does not cover.
 
-The other seven are closed. The last three came from reviewing fixes rather
-than code: `S6` from reviewing `S2`/`S3`, `S7` from reviewing `S6`, and `S8`
-from reviewing `S7`.
+The other seven are closed, as are all nine of `S9`–`S17`. The last three of
+the original eight came from reviewing fixes rather than code: `S6` from
+reviewing `S2`/`S3`, `S7` from reviewing `S6`, and `S8` from reviewing `S7`.
+
+**`S9`–`S17` came from reading the same subsystem again, more slowly.** None
+was found by running anything, and none is visible from a passing test. Two are
+direct follow-ons from fixes already recorded here: `S9` is the fifth reader
+`S5`'s fix did not cover, and it is the one that runs first; `S12` is the term
+`S3`'s net-of-fees correction missed.
 
 Five of the eight are deployed. `S3`'s contract-side bound was the last of
 those to go live, on 2026-08-30, and mainnet `3692588382` carries
@@ -43,6 +51,34 @@ bound there is. See [`S3` §7](S3-unbounded-fee.md).
 | [`S6`](S6-convert-path-unchecked.md) | Medium | The conversion path is checked by nothing the engine does not choose | **Fixed** |
 | [`S7`](S7-mirror-without-the-router.md) | Medium | The mirrored guard copied the cheap half and left the load-bearing one | **Fixed** |
 | [`S8`](S8-transfer-alongside-a-route.md) | Medium | A hostile transfer rides alongside a genuine route call | **Open** |
+
+## Found on 2026-09-02, reading the same code again
+
+Nine, all fixed. The subsystem had already had `S1`–`S8` raised against it and
+35 property tests written for it, so the shallow defects were gone; every one of
+these is a control that exists and does not do what its name says.
+
+| id | severity | title | status |
+|:---:|:---:|---|---|
+| [`S9`](S9-the-reader-s5-missed.md) | Medium | The evaluation reader `S5` missed, and it is the one that runs first | **Fixed** `2ae1c29` |
+| [`S10`](S10-forfeit-guard-ignores-its-currency.md) | Medium | The forfeit guard reads a number without reading its currency | **Fixed** `2ae1c29` |
+| [`S11`](S11-a-pool-counted-twice.md) | Low | A pool counted twice wherever the cache holds it under both keys | **Fixed** `7053a52` |
+| [`S12`](S12-summary-promises-an-uncharged-close-out.md) | Info | `summary` promises a close-out it never charges for | **Fixed** `2ae1c29` |
+| [`S13`](S13-only-the-quote-call-is-contained.md) | Medium | Only the quote call is contained, so a conversion failure takes the close-outs with it | **Fixed** `44932aa` |
+| [`S14`](S14-the-waiver-boundary-cannot-refuse.md) | Info | The fee waiver's boundary cannot refuse anything its caller can present | **Fixed** `44932aa` |
+| [`S15`](S15-no-exception-is-not-an-answer.md) | Info | "It did not raise" is not the same as "there is an answer" | **Fixed** `44932aa` |
+| [`S16`](S16-the-endpoint-returns-its-own-exception.md) | Info | The sweep endpoint returns its own exception text | **Fixed** `44932aa` |
+| [`S17`](S17-the-override-that-did-nothing.md) | Low | The `data-router-app` override existed and did nothing | **Fixed** `4abb5a5` |
+
+One of these was raised and **withdrawn** rather than fixed, and it is recorded
+because withdrawing it took the same evidence that would have justified it. It
+proposed refusing a holding the evaluation lists but does not itemise, on the
+grounds that an empty `programs` is the absence of evidence a holding is free.
+Four existing tests assert the opposite with a stated rationale, and the paired
+account dumps support them: where the evaluation itemises a position the tokens
+are **not** in the wallet — `cUSDC` reports `Collateral` 79,949 against a chain
+balance of zero — while every listing with empty programs is wallet-resident
+for its full amount. An absent entry records no position.
 
 None was reachable by an unprivileged remote attacker: `S2`, `S3`, `S6`, `S7`
 and `S8` need the engine's response to be wrong, and `S4` needed only a wrong

@@ -16,10 +16,17 @@ own. For the contract, read [REPORT.md](REPORT.md).
   [evidence/](evidence/). Those groups are now a fixture in the widget's own
   suite as well: `S6`'s fix is a rule about router groups, so its accepting
   cases are 97 transactions that executed rather than fixtures written to pass.
-- **Findings:** eight — seven Medium and one Informational. Seven are fixed,
-  five of those deployed (`S3`'s contract half went live on 2026-08-30; see §2)
-  and the `S6`/`S7` fixes in the widget and not yet released. **`S8` is open**
-  and, unlike the rest, has no complete fix available on either side.
+- **Findings:** eight from the audit proper — seven Medium and one
+  Informational. Seven are fixed, five of those deployed (`S3`'s contract half
+  went live on 2026-08-30; see §2) and the `S6`/`S7` fixes in the widget and
+  not yet released. **`S8` is open** and, unlike the rest, has no complete fix
+  available on either side.
+- **Nine more, `S9`–`S17`, found on 2026-09-02** by reading the same code
+  again rather than by testing it — two Medium in the planner, two Medium in
+  the engine half, two Low and four Informational. All fixed. Two are direct
+  follow-ons from fixes recorded above: `S9` is the fifth evaluation reader
+  `S5`'s fix did not cover and the one that runs first, and `S12` is the term
+  `S3`'s net-of-fees correction missed. See [findings/](findings/README.md).
 
 ---
 

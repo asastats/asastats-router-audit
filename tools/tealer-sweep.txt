@@ -6,7 +6,7 @@ program   4,892 TEAL lines, sha256 953988d9…1684 — byte-for-byte the deploye
 == compiling with mainnet template values ==
 info: using puyapy version 5.9.0
 warning: cannot determine package root for contracts/router_app.py
-info: using python search path: ['/home/ipaleka/dev/venvs/backend/lib/python3.12/site-packages']
+info: using python search path: ['<site-packages>']
 info: Writing build/tealer/Router.arc56.json
 info: Writing build/tealer/Router.approval.teal
 info: Writing build/tealer/Router.clear.teal
@@ -120,5 +120,5 @@ substituted; 4892 lines
    impact:   HIGH
    status:   0 results
 
-Done. Logs in /home/ipaleka/claude/router/build/tealer/detect-*.log
-Total: 1.1M	/home/ipaleka/claude/router/build/tealer
+Done. Logs in <router-checkout>/build/tealer/detect-*.log
+Total: 1.1M	<router-checkout>/build/tealer

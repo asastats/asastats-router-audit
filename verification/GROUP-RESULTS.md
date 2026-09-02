@@ -10,7 +10,7 @@ ALGOD_URL=http://127.0.0.1:8085 ALGOD_TOKEN=… \
 ```
 
 ```
-evidence: /home/ipaleka/claude/asastats-router-audit/evidence
+evidence: <audit-checkout>/evidence
 groups:   7
 node:     <mainnet-algod>
 
