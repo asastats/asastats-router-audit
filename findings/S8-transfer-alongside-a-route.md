@@ -71,7 +71,8 @@ executed**:
 | `sweep-4-convert` | `GV27MIIS…` ×3 |
 | `sweep-6-convert` | `GV27MIIS…` ×3, **`ZJWF2PLJ…` ×1** |
 
-`GV27MIIS…` is the application address of router `3689591968`. `ZJWF2PLJ…` is
+`GV27MIIS…` was the application address of router `3689591968`, which served
+these groups and has since been retired. `ZJWF2PLJ…` is
 not, and it is not the address of the pool application called in the same group
 (`1002541853` → `XSKED5VK…`) either: it is a **pool escrow**, from a leg where
 the caller pays the pool directly rather than through the router.
@@ -217,7 +218,37 @@ boundary, a new failure mode when it is unreachable — and it needs the group
 composition to be derivable from the plan, which it currently is because the
 engine builds both.
 
-### The recommendation
+### What has been done since, 2026-09-02
+
+**Mitigation 1 is taken** — `convertedInputProblems` in the widget. Every
+transfer the connected account sends must move an asset the plan named, for no
+more than it described. The rule was derived from the seven executed groups
+rather than from a model of one: in each, every transfer the holder sends moves
+the same asset, split one transfer per venue, and the parts sum to exactly the
+described holding.
+
+**Option B is under way and does not yet close this.** The signer now exists as
+a service (`router/signer/`) whose key can live under an account the engine
+cannot read, and it parses the note the engine's signer only ever measured —
+the application, the caller, `asset_out`, the asserting index, each route
+call's enumerated amount against the transaction funding it, and an entry
+describing a position that holds no route call, which the contract cannot check
+because it reads the note one index at a time.
+
+**What it deliberately does not check is why `S8` is still open.** The obvious
+rule — that the note's enumeration accounts for every movement the caller makes
+— is wrong, and executed traffic proves it. `sweep_6_convert` opens with a
+transfer to a Tinyman v2 pool followed by a `swap` call to `1002541853`: a
+**direct venue leg**, sent straight to a pool rather than through the router,
+which the note does not enumerate and never should. Requiring exhaustiveness
+refuses one honest conversion in three of the routed groups in `evidence/`.
+
+Closing this needs **destination** verification — every caller movement must
+pay the router's application account or a pool the group's own provider calls
+legitimately use — which is option A's expensive part, moved to the one place
+it is affordable. That is a separate stage.
+
+### The recommendation, as it stood
 
 **Take mitigation 1 now and decide on B separately.** Binding the moved assets
 to what the plan described is cheap, sits in code that already exists, and

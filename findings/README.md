@@ -21,7 +21,7 @@ than code: `S6` from reviewing `S2`/`S3`, `S7` from reviewing `S6`, and `S8`
 from reviewing `S7`.
 
 Five of the eight are deployed. `S3`'s contract-side bound was the last of
-those to go live, on 2026-08-30, and mainnet `3689591968` carries
+those to go live, on 2026-08-30, and mainnet `3692588382` carries
 `MAX_GROUP_FEE = 1_000_000`. The `S6` and `S7` fixes are in the widget and not
 yet released.
 

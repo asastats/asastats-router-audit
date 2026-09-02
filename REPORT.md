@@ -3,8 +3,9 @@
 **Target** `router/contracts/router_app.py` — 2,391 lines of Algorand Python,
 compiling to TEAL v11 under PuyaPy 5.9.0
 **Revision** `8d130d6`, re-verified at `a6b9df6`
-**Deployments** mainnet `3689591968` (**unrestricted**, 5 bps) · testnet
-`770729651` (unrestricted, 0 bps). Both predecessors, `3688554446` and
+**Deployments** mainnet `3692588382` (**unrestricted**, 5 bps) · testnet
+`770893297` (unrestricted, 0 bps). Their predecessors, `3689591968` and
+`770729651`, are retired and destroyed, as are `3688554446` and
 `770123816`, are retired and destroyed.
 **Date** 2026-08-29, revised 2026-09-01
 **Method** AI-assisted review, verified against the source, the chain, and
@@ -18,7 +19,7 @@ what that is worth and what it is not.
 **No critical or high-severity vulnerability was found in the contract.** The
 23 findings raised by the five previous audits are closed, and each mitigation
 was re-derived from the source rather than carried forward from the earlier
-reports — 38 mechanical checks, all passing, in
+reports — 39 mechanical checks, all passing, in
 [verification/RESULTS.md](verification/RESULTS.md), and 54 more against
 transactions that executed, in
 [verification/GROUP-RESULTS.md](verification/GROUP-RESULTS.md).
@@ -140,7 +141,7 @@ Derived mechanically from the source, not read off by eye:
 | `pool_budget` | | | — | |
 
 "restricted" is the compile-time `RESTRICT_TO_ADMIN` template variable. It is
-**off** on `3689591968` and on testnet `770729651`, and was set on every
+**off** on `3692588382` and on testnet `770893297`, and was set on every
 mainnet deployment before them. The manifest records
 `"RESTRICT_TO_ADMIN": 0`; `verify.sh` reads that file rather than describing
 it, and [evidence/](evidence/) shows the column empty on chain.
@@ -362,7 +363,7 @@ in this series. The sweep compiles with `RESTRICT_TO_ADMIN = 0` deliberately —
 the unrestricted build is the superset — and until 2026-08-30 mainnet ran the
 restricted one, so the two could only be compared by argument. They now hash
 the same: `f568200e…c8aa4`, matching `approval_teal_sha256` in
-`router-mainnet-3689591968.json`, with `verify_deployment.py` exiting 0 against
+`router-mainnet-3692588382.json`, with `verify_deployment.py` exiting 0 against
 the deployed application. `verify.sh` checks that hash.
 
 | detector | result | reading |
@@ -395,8 +396,8 @@ its count.**
 git clone <this repository>
 cd asastats-router-audit/verification
 
-ROUTER=/path/to/router ./verify.sh   # 38 checks against the source
-python3 verify-groups.py             # 50 more against what executed
+ROUTER=/path/to/router ./verify.sh   # 39 checks against the source
+python3 verify-groups.py             # 62 more against what executed
 ```
 
 Neither needs a node or credentials. `verify-groups.py` takes four further

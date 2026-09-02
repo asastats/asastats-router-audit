@@ -567,11 +567,11 @@ check "...handed down by the view, not read from the engine" "1" \
 # and none in the widget satisfied a want of 2, which is the opposite of what
 # "the widget carries the same id as a fallback" claims.
 check "...and the widget carries the same id as a fallback" "1" \
-    "$(grep -c '3689591968' "${WIDGET}")"
+    "$(grep -c '3692588382' "${WIDGET}")"
 check "...as does the view that hands it down" "1" \
-    "$(grep -c '3689591968' "${WIDGETS}/inhouse/dustsweep/views.py")"
+    "$(grep -c '3692588382' "${WIDGETS}/inhouse/dustsweep/views.py")"
 check "which is the application the audit pins to mainnet" "1" \
-    "$(grep -c '^Deployments.*3689591968\|mainnet .3689591968' "${HERE}/../REPORT.md")"
+    "$(grep -c '^Deployments.*3692588382\|mainnet .3692588382' "${HERE}/../REPORT.md")"
 
 # The two entry points that skip the contract's guard cannot count as "called".
 check "the exempt selectors are both excluded" "2" \

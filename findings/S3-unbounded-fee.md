@@ -7,7 +7,7 @@
 - **Origin:** this audit
 - **Status:** **Fixed and deployed** — close-outs by `0be86c7` (widget) and
   `2aad22b` (planner); every routed group by the contract's own guard, live on
-  mainnet `3689591968` since 2026-08-30. What a contract cannot reach is in §7.
+  mainnet `3692588382` since 2026-08-30. What a contract cannot reach is in §7.
 
 ---
 
@@ -186,8 +186,8 @@ pass. 111 LocalNet tests, 967 in the router suite.
 
 ## 7. What is deployed, and what cannot be
 
-**The contract half is live since 2026-08-30.** Mainnet `3689591968` and
-testnet `770729651` were compiled with `MAX_GROUP_FEE = 1_000_000`; the
+**The contract half is live since 2026-08-30.** Mainnet `3692588382` and
+testnet `770893297` were compiled with `MAX_GROUP_FEE = 1_000_000`; the
 manifest records it and `verify.sh` reads the manifest. `3688554446` and
 `770123816`, which lacked it, are retired and destroyed. The paragraph that
 stood here — *fixed in the repository and open in production* — is no longer

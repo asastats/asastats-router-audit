@@ -2,12 +2,12 @@
 
 ## What was done
 
-1. **Read the contract.** 2,391 lines of Algorand Python, all 14 entry points,
+1. **Read the contract.** 2,391 lines of Algorand Python, all 15 entry points,
    the guards in each, and the helpers they call.
 2. **Derived the access-control matrix mechanically** by parsing for decorated
    methods and the assertions inside each body, rather than reading it off.
    That is how the two entry points *without* the group-hygiene guard were
-   found — a manual pass had recorded all 14 as guarded.
+   found — a manual pass had recorded all 15 as guarded, where 13 are.
 3. **Re-verified every prior finding against the source.** Not against the
    previous report. Where a mitigation was claimed, the code implementing it
    was located and quoted.

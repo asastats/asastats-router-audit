@@ -157,10 +157,15 @@ echo "== the deployment  what is compiled into mainnet, from its own manifest ==
 # Read rather than described. The two errors that did this series the most
 # damage - v4 citing a testnet id as mainnet, v5 recording a removal that never
 # happened - are both answered by this file, and neither audit opened it.
-MANIFEST="${ROUTER}/build/releases/router-mainnet-3689591968.json"
+#
+# 3692588382 replaced 3689591968 on 2026-09-02, carrying the intermediate
+# residue check. The predecessor was swept of its accrued dust and destroyed;
+# it answers 404. The manifest name moves with the deployment, and the checks
+# below read it rather than restating what it says.
+MANIFEST="${ROUTER}/build/releases/router-mainnet-3692588382.json"
 if [ -f "${MANIFEST}" ]; then
     field () { python3 -c "import json,sys; print(json.load(open(sys.argv[1]))${2})" "${MANIFEST}"; }
-    check "mainnet application"                "3689591968" "$(field . "['application_id']")"
+    check "mainnet application"                "3692588382" "$(field . "['application_id']")"
     check "RESTRICT_TO_ADMIN"                  "0"          "$(field . "['template_values']['RESTRICT_TO_ADMIN']")"
     check "restrict_to_admin, as recorded"     "False"      "$(field . "['restrict_to_admin']")"
     check "compiler"                           "puyapy 5.9.0" "$(field . "['compiler']")"

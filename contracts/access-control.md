@@ -25,7 +25,7 @@ the guards inside each body, rather than read off by eye. Reproduce with
 | `pool_budget` | | | — | |
 
 `RESTRICT_TO_ADMIN` is a compile-time template variable. **It is off on
-mainnet `3689591968` and testnet `770729651`**, and was set on every mainnet
+mainnet `3692588382` and testnet `770893297`**, and was set on every mainnet
 deployment before 2026-08-30. So the "restricted" column above describes a
 control that is compiled in but currently unset: `close_holding`, `route` and
 `route3` accept any caller. `verify.sh` reads the deployment manifest for this

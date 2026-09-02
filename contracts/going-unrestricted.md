@@ -3,7 +3,7 @@
 Not a finding. A note on the one decision this series keeps circling, written
 down because it had been asked three times and answered wrongly twice.
 
-**It came off on 2026-08-30.** Mainnet `3689591968` serves the public. This
+**It came off on 2026-08-30.** Mainnet `3692588382` serves the public. This
 document was written the day before, as an argument about what would have to
 exist first; it is kept in that order because the answer is only worth anything
 if you can see what was asked. §"What actually happened" is at the foot.

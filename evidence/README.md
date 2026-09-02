@@ -7,7 +7,7 @@ them.
 
 **This is the first time any audit in this series has checked a claim against a
 running system.** The five before it, and the source-reading half of this one,
-answer *does the code say this?* — 78 checks across
+answer *does the code say this?* — 123 checks across
 [verify.sh](../verification/verify.sh) and
 [verify-sweep.sh](../verification/verify-sweep.sh) that read
 `router_app.py`, the sweep planner and the browser control. Nothing in either

@@ -281,7 +281,7 @@ Every accepted finding becomes a check in `verify.sh`, `verify-sweep.sh` or
 `verify-groups.py`, asserting the *fixed* behaviour, before its file is written.
 A finding whose check nobody can write was probably not understood.
 
-**2. Do not use `--fix` on the contract.** `3689591968` is immutable and live.
+**2. Do not use `--fix` on the contract.** `3692588382` is immutable and live.
 A patch applied to `router_app.py` is a redeploy, a new application id, and
 every integration in the estate moved onto it — which has already cost one
 unnecessary deployment. `--fix` is fine on the verifiers, the widget and the

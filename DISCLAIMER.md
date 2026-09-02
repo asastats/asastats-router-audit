@@ -10,7 +10,7 @@ supplied the environment, and has read the result.
 That is the single most important sentence in this repository.
 
 Until 2026-08-30 it was also the reason the mainnet deployment was compiled
-with `RESTRICT_TO_ADMIN`. That restriction is now off, and `3689591968` serves
+with `RESTRICT_TO_ADMIN`. That restriction is now off, and `3692588382` serves
 the public. **The sentence above did not stop being true; it stopped being
 cushioned.** While the admin was the only caller, an audit nobody qualified had
 read was a tolerable risk to one account. It is now a risk to everyone who

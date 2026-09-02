@@ -39,7 +39,7 @@ fourth defect on their first run, in both languages at once. See
 [SWEEP-REPORT.md](SWEEP-REPORT.md).
 
 **The mainnet deployment is no longer restricted to its admin, and this audit
-did not clear it to be otherwise.** `3689591968` went up on 2026-08-30 with
+did not clear it to be otherwise.** `3692588382` went up on 2026-09-02 with
 `RESTRICT_TO_ADMIN` off, and the seven mainnet groups in [evidence/](evidence/)
 — routed by an account that is not the admin — are the proof rather than the
 claim. The restriction had been doing two jobs at once: while it was set, the
@@ -103,10 +103,10 @@ what was deliberately left unchecked.
 | | |
 |---|---|
 | source | `router/contracts/router_app.py`, 2,391 lines of Algorand Python |
-| compiled | 4,768 lines of TEAL v11, PuyaPy 5.9.0 — `f568200e…c8aa4`, [swept clean](tools/tealer.md) and matching the deployment manifest |
-| mainnet | [`3689591968`](https://allo.info/application/3689591968) — **unrestricted**, 5 bps, deployed 2026-08-30 from `848a3a3` |
-| testnet | `770729651` — unrestricted, 0 bps |
-| retired | `3688554446` (mainnet) and `770123816` (testnet), both destroyed |
+| compiled | TEAL v11, PuyaPy 5.9.0 — `953988d9…1684`, matching the deployment manifest. **The Tealer sweep predates this deployment**; see [tools/tealer.md](tools/tealer.md) |
+| mainnet | [`3692588382`](https://allo.info/application/3692588382) — **unrestricted**, 5 bps, deployed 2026-09-02 from `1e38529` |
+| testnet | `770893297` — unrestricted, 0 bps, deployed 2026-09-02 |
+| retired | mainnet `3689591968` and `3688554446`, testnet `770729651` and `770123816` — all four destroyed |
 | audited revision | `8d130d6`, re-verified at `a6b9df6` |
 
 ## Why there are six of these

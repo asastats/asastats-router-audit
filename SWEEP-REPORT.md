@@ -11,7 +11,7 @@ own. For the contract, read [REPORT.md](REPORT.md).
   `router/sweep.py`, `router/selection.py`, `engine/core/sweep.py`, and the
   wallet bridge's `signAndSend`
 - **Verification:** [verification/verify-sweep.sh](verification/verify-sweep.sh)
-  — 68 checks, all passing and **none skipped**: the two that need a node were
+  — 84 checks, all passing and **none skipped**: the three that need a node were
   run against mainnet over an SSH-forwarded algod; plus six sweep groups that executed on mainnet, in
   [evidence/](evidence/). Those groups are now a fixture in the widget's own
   suite as well: `S6`'s fix is a rule about router groups, so its accepting
@@ -49,7 +49,7 @@ read the rest with the same intent.
 | [`S7`](findings/S7-mirror-without-the-router.md) | Medium | The mirrored guard copied the cheap half and left the load-bearing one | **Fixed** |
 | [`S8`](findings/S8-transfer-alongside-a-route.md) | Medium | A hostile transfer rides alongside a genuine route call | **Open** — demonstrated against the shipped code |
 
-The four Medium ones share a precondition worth stating plainly: **none is
+The six Medium ones share a precondition worth stating plainly: **none is
 reachable by an unprivileged remote attacker.** `S2`, `S3` and `S6` need the
 engine's response to be wrong — through code compromise, or through the Redis
 asset cache the engine reads without checking. `S4` needs only a wrong price,
@@ -82,7 +82,7 @@ the switch that selects whether checking happens at all.
 over — a cap in the widget for close-out groups, and a fourth assertion in
 `_assert_group_is_clean` that totals the fee across any routed group. When this
 report was first written the second half was source-only. It is not any more:
-mainnet `3689591968` and testnet `770729651` were compiled on 2026-08-30 with
+mainnet `3692588382` and testnet `770893297` were compiled on 2026-09-02 with
 `MAX_GROUP_FEE = 1_000_000`, and the predecessors that lacked it are retired
 and destroyed.
 
