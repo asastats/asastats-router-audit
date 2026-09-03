@@ -63,7 +63,7 @@ Every factual claim in the reports is a command. 186 of them:
 cd verification
 ROUTER=/path/to/router ./verify.sh              # the contract, from source — 39
 ROUTER=/path/to/router ./verify-sweep.sh        # the dust sweep — 94
-python3 verify-groups.py                        # what the chain did — 63
+python3 verify-groups.py                        # what the chain did — 65
 ```
 
 `verify.sh` needs no node, no credentials and no network. `verify-sweep.sh`

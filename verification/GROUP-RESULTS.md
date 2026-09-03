@@ -4,15 +4,9 @@ Output of `verify-groups.py` against [evidence/](../evidence/). Re-run it
 yourself:
 
 ```
-python3 verify-groups.py                                     # offline
-ALGOD_URL=http://127.0.0.1:8085 ALGOD_TOKEN=… \
-    python3 verify-groups.py                                 # with a node
-```
-
-```
-evidence: <audit-checkout>/evidence
+evidence: /home/ipaleka/claude/asastats-router-audit/evidence
 groups:   7
-node:     <mainnet-algod>
+node:     http://127.0.0.1:8085
 
 
 the deployment these groups ran against
@@ -24,6 +18,8 @@ the deployment these groups ran against
   PASS  the retired application really is gone                     404
   PASS  and the live one carries the `paused` key set_paused added True
   PASS  the application the evidence called is retired too         404
+  PASS  the quote signer is set, because every route depends on it True
+  PASS  the voucher signer is NOT set, so no discount can be granted True
 
 H1 - the floor is co-signed, and it bound
 -------------------------------------------------------------------------
@@ -120,6 +116,5 @@ the sweep reconciles against the account it swept
         minimum balance released: 4,700,000 microALGO against 280,000 in fees
 
 -------------------------------------------------------------------------
-  63 passed, 0 failed, 0 skipped
-
+  65 passed, 0 failed, 0 skipped
 ```

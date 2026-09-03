@@ -326,10 +326,33 @@ if ALGOD_URL:
         404,
         (node(f"/v2/applications/{ROUTER_APP}") or {}).get("__status__"),
     )
+
+    # Which of the contract's two signing keys are actually set. A reader of
+    # the threat model would otherwise assume both are live; one is not, and
+    # that changes what a stolen key is worth. Read rather than described.
+    signers = {
+        base64.b64decode(kv["key"]).decode("utf8", "replace"): base64.b64decode(
+            kv["value"].get("bytes", "")
+        )
+        for kv in (live or {}).get("params", {}).get("global-state", [])
+        if kv["value"].get("type") == 1
+    }
+    check(
+        "the quote signer is set, because every route depends on it",
+        True,
+        signers.get("quote_signer", b"") not in (b"", bytes(32)),
+    )
+    check(
+        "the voucher signer is NOT set, so no discount can be granted",
+        True,
+        signers.get("voucher_signer", bytes(32)) in (b"", bytes(32)),
+    )
 else:
     skip("the retired application really is gone", "no ALGOD_URL")
     skip("and the live one carries the `paused` key set_paused added", "no ALGOD_URL")
     skip("the application the evidence called is retired too", "no ALGOD_URL")
+    skip("the quote signer is set, because every route depends on it", "no ALGOD_URL")
+    skip("the voucher signer is NOT set, so no discount can be granted", "no ALGOD_URL")
 
 # ===========================================================================
 section("H1 - the floor is co-signed, and it bound")
