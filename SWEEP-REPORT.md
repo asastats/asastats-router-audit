@@ -11,7 +11,7 @@ own. For the contract, read [REPORT.md](REPORT.md).
   `router/sweep.py`, `router/selection.py`, `engine/core/sweep.py`, and the
   wallet bridge's `signAndSend`
 - **Verification:** [verification/verify-sweep.sh](verification/verify-sweep.sh)
-  — 89 checks, all passing and **none skipped**: the three that need a node were
+  — 93 checks, all passing and **none skipped**: the three that need a node were
   run against mainnet over an SSH-forwarded algod; plus six sweep groups that executed on mainnet, in
   [evidence/](evidence/). Those groups are now a fixture in the widget's own
   suite as well: `S6`'s fix is a rule about router groups, so its accepting
@@ -28,6 +28,11 @@ own. For the contract, read [REPORT.md](REPORT.md).
   follow-ons from fixes recorded above: `S9` is the fifth evaluation reader
   `S5`'s fix did not cover and the one that runs first, and `S12` is the term
   `S3`'s net-of-fees correction missed. See [findings/](findings/README.md).
+- **One more, [`S18`](findings/S18-quoting-pools-the-contract-refuses.md), on
+  2026-09-03**, from reviewing the `S8` fix: the quoting layer offers 447
+  AlgoFi pools the contract's own `ALGOFI_POOLS` list refuses, and a route
+  through one reverts on chain after the caller has signed. Low, latent — in
+  224 live quotes the allocator picked a listed pool every time — and fixed.
 
 ---
 

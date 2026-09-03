@@ -806,6 +806,55 @@ check "...and a timeout resolves to null, so it joins the refusals" "1" \
     "$(sed -n '/^function withTimeout/,/^}/p' "${WIDGET}" | grep -c 'resolve(null)')"
 
 echo
+echo "S18 — is a pool the contract refuses ever quoted? (FIXED)"
+echo "-------------------------------------------------------------------------"
+# The contract will execute an AlgoFi leg only through ALGOFI_POOLS. The graph
+# offers 470 pools. This asks the quoting layer directly, with a client that
+# raises if it is touched, so it also pins that the decision costs no round
+# trip.
+if [ -f "${ROUTER}/router/venues.py" ]; then
+    cat > "${WORK}/algofi_listed.py" <<'ALGOFI'
+import sys
+sys.path.insert(0, sys.argv[1])
+from router.graph import PoolEdge
+from router.providers import ALGOFI_MAINNET_POOLS
+from router.venues import algofi_venues
+
+
+class Boom:
+    def application_info(self, app):
+        raise AssertionError("an unlisted pool was read from the chain")
+
+
+# 613193782 and 919950071 are real: both are offered for ALGO/USDC by the
+# graph this checkout ships, and neither is on the contract's list
+unlisted = [a for a in ("613193782", "919950071") if int(a) not in ALGOFI_MAINNET_POOLS]
+print("s18.unlisted_pools=" + str(len(unlisted)))
+offered = 0
+for app in unlisted:
+    edge = PoolEdge("algofi", app, 605753404, 0, 31566704)
+    if algofi_venues(Boom(), edge, 0, 31566704):
+        offered += 1
+print("s18.offered=" + str(offered))
+print("s18.listed_count=" + str(len(ALGOFI_MAINNET_POOLS)))
+ALGOFI
+    if "${PYTHON}" "${WORK}/algofi_listed.py" "${ROUTER}" > "${WORK}/algofi.txt" 2>/dev/null; then
+        check "the two sample pools really are off the contract's list" "2" \
+            "$(sed -n 's/^s18.unlisted_pools=//p' "${WORK}/algofi.txt")"
+        check "...and neither is offered as a venue" "0" \
+            "$(sed -n 's/^s18.offered=//p' "${WORK}/algofi.txt")"
+        check "the list the quoting reads is the contract's 23" "23" \
+            "$(sed -n 's/^s18.listed_count=//p' "${WORK}/algofi.txt")"
+    else
+        skip "S18, the pools the contract refuses" "could not run the reader" 3
+    fi
+    check "the contract still pins AlgoFi legs to that list" "1" \
+        "$(grep -c 'ALGOFI_POOLS' "${CONTRACT}")"
+else
+    skip "S18, the pools the contract refuses" "needs the router checkout" 4
+fi
+
+echo
 echo "context"
 echo "-------------------------------------------------------------------------"
 check "the asset cache is consulted before the node by default" "1" \

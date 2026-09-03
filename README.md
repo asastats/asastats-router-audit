@@ -62,7 +62,7 @@ Every factual claim in the reports is a command. 186 of them:
 ```bash
 cd verification
 ROUTER=/path/to/router ./verify.sh              # the contract, from source — 39
-ROUTER=/path/to/router ./verify-sweep.sh        # the dust sweep — 89
+ROUTER=/path/to/router ./verify-sweep.sh        # the dust sweep — 93
 python3 verify-groups.py                        # what the chain did — 63
 ```
 

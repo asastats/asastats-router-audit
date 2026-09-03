@@ -118,6 +118,13 @@ S8 — the browser cannot bound this, and the signer now does (FIXED)
   PASS  a creator lookup that never answers times out            1
   PASS  ...and a timeout resolves to null, so it joins the refusals 1
 
+S18 — is a pool the contract refuses ever quoted? (FIXED)
+-------------------------------------------------------------------------
+  PASS  the two sample pools really are off the contract's list  2
+  PASS  ...and neither is offered as a venue                     0
+  PASS  the list the quoting reads is the contract's 23          23
+  PASS  the contract still pins AlgoFi legs to that list         1
+
 context
 -------------------------------------------------------------------------
   PASS  the asset cache is consulted before the node by default  1
@@ -125,5 +132,5 @@ context
   PASS  unpriced is the only disposition that starts off         1
 
 -------------------------------------------------------------------------
-  89 passed, 0 failed, 0 skipped
+  93 passed, 0 failed, 0 skipped
 ```

@@ -1,26 +1,29 @@
 # Findings
 
-41 in total across seven audits: 23 raised by v1–v5 and closed, one raised by
-the contract audit, eight by the dust sweep audit, and **nine more found on
+42 in total across seven audits: 23 raised by v1–v5 and closed, one raised by
+the contract audit, eight by the dust sweep audit, **nine more found on
 2026-09-02** by reading the sweep planner, the engine half that calls it and
-the widget line by line — `S9`–`S17`, all fixed.
+the widget line by line — `S9`–`S17` — and one more on 2026-09-03, `S18`.
+**All 42 are closed.**
 
-## Open
+## Nothing is open
 
-[`S8`](S8-transfer-alongside-a-route.md) — **a hostile transfer rides
-alongside a genuine route call.** `S7` made a conversion group prove the router
-is in it; nothing makes it prove the group does nothing else. The route
-validates only the transaction immediately preceding it, the hygiene guard
-never reads an amount or a receiver, and an extra transfer executes on its own
-terms. **Open, and not closable by the method that closed `S6` and `S7`**: a
-receiver whitelist refuses `sweep-6-convert`, a conversion that executed, because
-a sweep legitimately pays pool escrows the browser cannot enumerate. Two partial
-mitigations are recorded in that finding, and each is explicit about what it
-does not cover.
+`S8` was the last, and it was published open on the grounds that it could not
+be closed by the method that closed `S6` and `S7`: a receiver whitelist refuses
+`sweep-6-convert`, a conversion that executed, because a sweep legitimately
+pays pool escrows. That was right about the browser and wrong about the signer,
+which can *derive* those escrows from the group's own application calls. Closed
+2026-09-03; §9 of that finding records the design and the two places the
+finding's own reasoning was wrong.
 
-The other seven are closed, as are all nine of `S9`–`S17`. The last three of
-the original eight came from reviewing fixes rather than code: `S6` from
-reviewing `S2`/`S3`, `S7` from reviewing `S6`, and `S8` from reviewing `S7`.
+**Fixed is not deployed.** `S8`'s fix is in the router and the engine still
+holds the quote-signing key until the signer service is provisioned, so its
+premise is unchanged in production today. The `S6` and `S7` fixes are in the
+widget and not yet released.
+
+The last three of the original eight came from reviewing fixes rather than
+code: `S6` from reviewing `S2`/`S3`, `S7` from reviewing `S6`, and `S8` from
+reviewing `S7`. `S18` continues that: it came from reviewing the `S8` fix.
 
 **`S9`–`S17` came from reading the same subsystem again, more slowly.** None
 was found by running anything, and none is visible from a passing test. Two are
@@ -69,6 +72,19 @@ these is a control that exists and does not do what its name says.
 | [`S15`](S15-no-exception-is-not-an-answer.md) | Info | "It did not raise" is not the same as "there is an answer" | **Fixed** `44932aa` |
 | [`S16`](S16-the-endpoint-returns-its-own-exception.md) | Info | The sweep endpoint returns its own exception text | **Fixed** `44932aa` |
 | [`S17`](S17-the-override-that-did-nothing.md) | Low | The `data-router-app` override existed and did nothing | **Fixed** `4abb5a5` |
+
+## Found on 2026-09-03, reviewing the `S8` fix
+
+| id | severity | title | status |
+|:---:|:---:|---|---|
+| [`S18`](S18-quoting-pools-the-contract-refuses.md) | Low | The router quotes 447 AlgoFi pools its own contract will not trade | **Fixed** `f6253ac` |
+
+`S8`'s fix pins the destinations a group may pay to the same provider rules the
+contract uses, which meant moving those whitelists somewhere both could read.
+Once the quoting layer *could* see the `ALGOFI_POOLS` list, the fact that it
+never had became visible — and a route through one of the 447 pools it was
+freely offering reverts on chain, after the caller has signed. Latent rather
+than active: in 224 live quotes the allocator picked a listed pool every time.
 
 One of these was raised and **withdrawn** rather than fixed, and it is recorded
 because withdrawing it took the same evidence that would have justified it. It
