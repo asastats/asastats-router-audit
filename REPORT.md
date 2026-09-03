@@ -1,13 +1,13 @@
 # ASA Stats Smart Router — Security Audit
 
-**Target** `router/contracts/router_app.py` — 2,391 lines of Algorand Python,
+**Target** `router/contracts/router_app.py` — 2,580 lines of Algorand Python,
 compiling to TEAL v11 under PuyaPy 5.9.0
-**Revision** `8d130d6`, re-verified at `a6b9df6`
+**Revision** `8d130d6`, re-verified at `a6b9df6` and again at `1e38529` — the
+commit mainnet `3692588382` was compiled from, per its release manifest
 **Deployments** mainnet `3692588382` (**unrestricted**, 5 bps) · testnet
-`770893297` (unrestricted, 0 bps). Their predecessors, `3689591968` and
-`770729651`, are retired and destroyed, as are `3688554446` and
-`770123816`, are retired and destroyed.
-**Date** 2026-08-29, revised 2026-09-01
+`770893297` (unrestricted, 0 bps). Their predecessors `3689591968` and
+`770729651` are retired and destroyed, as are `3688554446` and `770123816`.
+**Date** 2026-08-29, revised 2026-09-01, 2026-09-02 and 2026-09-03
 **Method** AI-assisted review, verified against the source, the chain, and
 seven groups that executed on mainnet. See [DISCLAIMER.md](DISCLAIMER.md) for
 what that is worth and what it is not.
@@ -20,12 +20,12 @@ what that is worth and what it is not.
 23 findings raised by the five previous audits are closed, and each mitigation
 was re-derived from the source rather than carried forward from the earlier
 reports — 39 mechanical checks, all passing, in
-[verification/RESULTS.md](verification/RESULTS.md), and 54 more against
+[verification/RESULTS.md](verification/RESULTS.md), and 63 more against
 transactions that executed, in
 [verification/GROUP-RESULTS.md](verification/GROUP-RESULTS.md).
 
-**This report raised three findings of its own; two are closed and one is
-open.**
+**This report raised three findings of its own, and all three are closed** —
+the last of them, `S8`, on 2026-09-03, after being published open.
 [`S6`](findings/S6-convert-path-unchecked.md), Medium, off-chain, 2026-09-01:
 the dust sweep's conversion path ran no browser check on the group it signed,
 and the contract's hygiene guard could not stand in for one because a group
@@ -41,9 +41,9 @@ transaction immediately preceding the route and the hygiene guard never reads
 an amount or a receiver. This report said it was not closable by a receiver
 whitelist, since a sweep legitimately pays pool escrows. That was right about
 the browser and wrong about the signer, which can derive those escrows from the
-group's own application calls — see the finding's §9 for what
-would look complete. Nothing in the contract changed for any of the three. See
-§3.1 and §4.0.
+group's own application calls; §9 of that finding records the design and the
+two places this report's reasoning about it was wrong. Nothing in the contract
+changed for any of the three. See §3.1 and §4.0.
 
 **This is still not a clearance for unrestricted public deployment**, and the
 reason has nothing to do with the findings:

@@ -53,8 +53,10 @@ the swept program and mainnet `3689591968` are the same artefact, and
 The previous sweep ran at `75087b8` — the program deployed as `3688554446`,
 4,681 lines. Since then the contract gained `set_paused`, the group fee bound
 from [`S3`](../findings/S3-unbounded-fee.md), and group-hygiene guards on the
-two new setters, and lost an input cap. 87 lines of TEAL, and every one of them
-on the path a routed group takes.
+two new setters, and lost an input cap; and at `1e38529` it gained the
+intermediate-spend assertion, the MWPT vault read and the `_signed_floor`
+group-index guard. 211 lines of TEAL across the two deployments since, and
+every one of them on the path a routed group takes.
 
 Diffed detector for detector against that run:
 

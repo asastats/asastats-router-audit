@@ -110,6 +110,7 @@ S8 — the browser cannot bound this, and the signer now does (FIXED)
   PASS  ...and refuses the same group carrying the hostile transfer refused
   PASS  the signer reads the whitelists the contract compiles in 1
   PASS  ...and the deploy script reads the same ones             1
+  PASS  allowed_destinations is there to be read                 1
   PASS  a destination is derived, never taken from the group     0
   PASS  the quote signer key is read in the engine's own process 2
   PASS  ...from a path on the engine's own host                  2
@@ -132,5 +133,5 @@ context
   PASS  unpriced is the only disposition that starts off         1
 
 -------------------------------------------------------------------------
-  93 passed, 0 failed, 0 skipped
+  94 passed, 0 failed, 0 skipped
 ```

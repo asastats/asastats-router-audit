@@ -6,7 +6,7 @@ plan for spending it well rather than a list of things to try.
 
 **The obstacle first, because it decides everything else.** `/code-review`
 reviews a **diff** — the current branch, a PR, or a path target. This audit's
-subject is 2,391 lines of contract that were written months ago and a planner
+subject is 2,580 lines of contract that were written months ago and a planner
 that has been stable for weeks. There is no diff. Point it at the router
 checkout on `main` and it has nothing to read.
 
@@ -254,7 +254,7 @@ reviewer sees every line as new *and* has `router/contract.py`,
 `router/deployments.py`, the manifest and 999 tests available to check it
 against. Same coverage, none of the blindness.
 
-Do it in slices rather than all at once. The contract is 2,391 lines and a
+Do it in slices rather than all at once. The contract is 2,580 lines and a
 review that has to hold all of it will be shallower per line than four that do
 not:
 

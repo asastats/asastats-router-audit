@@ -2,7 +2,7 @@
 
 ## What was done
 
-1. **Read the contract.** 2,391 lines of Algorand Python, all 15 entry points,
+1. **Read the contract.** 2,580 lines of Algorand Python, all 15 entry points,
    the guards in each, and the helpers they call.
 2. **Derived the access-control matrix mechanically** by parsing for decorated
    methods and the assertions inside each body, rather than reading it off.
@@ -11,7 +11,7 @@
 3. **Re-verified every prior finding against the source.** Not against the
    previous report. Where a mitigation was claimed, the code implementing it
    was located and quoted.
-4. **Turned each claim into a command.** 195 checks across
+4. **Turned each claim into a command.** 196 checks across
    [verify.sh](../verification/verify.sh),
    [verify-sweep.sh](../verification/verify-sweep.sh) and
    [verify-groups.py](../verification/verify-groups.py), output recorded.

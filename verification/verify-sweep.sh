@@ -577,8 +577,12 @@ check "...and the widget carries the same id as a fallback" "1" \
     "$(grep -c '3692588382' "${WIDGET}")"
 check "...as does the view that hands it down" "1" \
     "$(grep -c '3692588382' "${WIDGETS}/inhouse/dustsweep/views.py")"
+# Anchored on the header line that makes the claim, not on a count of every
+# mention. The first alternative here used to be `^Deployments`, which cannot
+# match a line beginning `**Deployments**` - so this was resting entirely on
+# the loose half, and a second legitimate mention of the id broke it.
 check "which is the application the audit pins to mainnet" "1" \
-    "$(grep -c '^Deployments.*3692588382\|mainnet .3692588382' "${HERE}/../REPORT.md")"
+    "$(grep -c '^\*\*Deployments\*\* mainnet .3692588382' "${HERE}/../REPORT.md")"
 
 # The two entry points that skip the contract's guard cannot count as "called".
 check "the exempt selectors are both excluded" "2" \
@@ -772,6 +776,12 @@ SIGNER8
         "$(grep -c 'from router.providers import' "${ROUTER}/router/signer/venues.py")"
     check "...and the deploy script reads the same ones" "1" \
         "$(grep -c 'from router.providers import' "${ROUTER}/scripts/deploy.py")"
+    # The next check asserts an absence over a range, so the range has to be
+    # pinned first: renamed away, the `sed` yields nothing, `grep -c` prints 0
+    # and the absence reads as proved. That is the defect this audit's own
+    # phase 3 was written to find, and it applies to new checks too.
+    check "allowed_destinations is there to be read" "1" \
+        "$(grep -c '^def allowed_destinations(' "${ROUTER}/router/signer/venues.py")"
     check "a destination is derived, never taken from the group" "0" \
         "$(sed -n '/^def allowed_destinations/,/^    return allowed/p' \
             "${ROUTER}/router/signer/venues.py" | grep -c 'txn.accounts\|foreign_apps')"

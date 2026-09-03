@@ -105,8 +105,10 @@ docstring names "a cached answer" among the things it catches.
 
 ## 5. Why the tests did not catch it
 
-`dustsweep.test.js` passes 121 tests at **100% line and branch coverage** of
-`dustsweep.js`. The test that appears to cover this is:
+`dustsweep.test.js` passed 121 tests at **100% line and branch coverage** of
+`dustsweep.js` when this was raised — the point being that the coverage was
+already total, not that the number was small. The test that appears to cover
+this is:
 
 ```js
 test("the right asset closed to the wrong address", () => {

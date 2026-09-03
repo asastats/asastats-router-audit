@@ -11,7 +11,7 @@ own. For the contract, read [REPORT.md](REPORT.md).
   `router/sweep.py`, `router/selection.py`, `engine/core/sweep.py`, and the
   wallet bridge's `signAndSend`
 - **Verification:** [verification/verify-sweep.sh](verification/verify-sweep.sh)
-  — 93 checks, all passing and **none skipped**: the three that need a node were
+  — 94 checks, all passing and **none skipped**: the three that need a node were
   run against mainnet over an SSH-forwarded algod; plus six sweep groups that executed on mainnet, in
   [evidence/](evidence/). Those groups are now a fixture in the widget's own
   suite as well: `S6`'s fix is a rule about router groups, so its accepting
@@ -211,8 +211,10 @@ it disliked gives no information about coverage.
 
 `dustsweep.test.js` passed 121 tests at **100% line and branch coverage** of
 `dustsweep.js`. The suites either side were healthy too — 123 in
-`router/tests/test_sweep.py`, 62 in `engine/core/tests/test_sweep.py`. (After
-the fixes: 137, 139 and 64, still at 100% line and branch.)
+`router/tests/test_sweep.py`, 62 in `engine/core/tests/test_sweep.py`. Those
+are the counts at the time of the audit; every fix since has added to them, and
+on 2026-09-03 they stand at **154, 145 and 69**, still at 100% line and branch
+for the widget.
 
 All three Medium findings survive that. Coverage records which lines ran, not
 which claims were tested, and the test that appears to prove the close destination
@@ -381,7 +383,7 @@ ROUTER=/path/to/router WIDGETS=/path/to/widgets ENGINE=/path/to/engine \
 ALGOD_URL=https://your-node SWEEP_ADDRESS=SOMEADDRESS… \
     ./verification/verify-sweep.sh
 
-python3 verification/verify-groups.py            # the six groups above
+python3 verification/verify-groups.py            # the six above, and the swap
 
 REDIS_AUTH=… ROUTER=/path/to/router \
     python verification/measure-divergence.py evaluation.json …

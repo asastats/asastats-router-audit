@@ -50,7 +50,7 @@ does not look any different when it is wrong.
 ## What this audit did differently
 
 Every factual claim in [REPORT.md](REPORT.md) is backed by a command, and the
-recorded output of each script is committed alongside it. 195 checks across
+recorded output of each script is committed alongside it. 196 checks across
 three: [verify.sh](verification/verify.sh) reads the contract's source,
 [verify-sweep.sh](verification/verify-sweep.sh) reads the sweep's off-chain
 estate, and [verify-groups.py](verification/verify-groups.py) reads seven

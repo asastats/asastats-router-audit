@@ -129,11 +129,11 @@ would let a reader see that a group moves a holding somewhere unexpected.
 finding already says is a complement rather than a control. A reader cannot be
 expected to recognise a pool escrow address.
 
-**Neither closes it, and this finding stays open on purpose.** The honest
-position is that the browser can prove the router is present and cannot prove
-the group does nothing else — and that a control which looks complete and is
-not would be worse than one documented as partial. That is the mistake `S7`
-recorded, one level down.
+**Neither closed it, and this finding stayed open on purpose** until the
+signer's destination stage in §9. The honest position was that the browser can
+prove the router is present and cannot prove the group does nothing else — and
+that a control which looks complete and is not would be worse than one
+documented as partial. That is the mistake `S7` recorded, one level down.
 
 ## 7. Confirmed against the shipped code
 
@@ -251,6 +251,22 @@ pay the router's application account or a pool the group's own provider calls
 legitimately use — which is option A's expensive part, moved to the one place
 it is affordable. That is a separate stage.
 
+### The recommendation, as it stood
+
+**Take mitigation 1 now and decide on B separately.** Binding the moved assets
+to what the plan described is cheap, sits in code that already exists, and
+catches the substitution case. It does not close `S8` and this finding stays
+open when it lands.
+
+**A is not recommended.** The cost is high, the failure direction breaks working
+conversions, and it duplicates the engine's own knowledge — which is the
+argument `S3`'s abandoned input cap already lost.
+
+**B is the fix, and it is a product decision about operating cost, not an
+audit finding.** It is out of this audit's scope for the same reason key
+management is, and it is named here so the decision is taken deliberately
+rather than by not taking it.
+
 ## 9. What closed it, 2026-09-03 — and where §8 was wrong
 
 The destination stage landed: `router/signer/venues.py`, wired into
@@ -299,19 +315,3 @@ airdrop, it yields only what a pool pays back rather than the transfer, and
 And the signer still does not judge whether `minimum` is a *fair* floor. The
 contract takes it on faith and so does this. A compromised engine can quote a
 bad price; it can no longer move the money somewhere else.
-
-### The recommendation, as it stood
-
-**Take mitigation 1 now and decide on B separately.** Binding the moved assets
-to what the plan described is cheap, sits in code that already exists, and
-catches the substitution case. It does not close `S8` and this finding stays
-open when it lands.
-
-**A is not recommended.** The cost is high, the failure direction breaks working
-conversions, and it duplicates the engine's own knowledge — which is the
-argument `S3`'s abandoned input cap already lost.
-
-**B is the fix, and it is a product decision about operating cost, not an
-audit finding.** It is out of this audit's scope for the same reason key
-management is, and it is named here so the decision is taken deliberately
-rather than by not taking it.
