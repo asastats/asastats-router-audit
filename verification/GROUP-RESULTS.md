@@ -19,7 +19,7 @@ the deployment these groups ran against
   PASS  and the live one carries the `paused` key set_paused added True
   PASS  the application the evidence called is retired too         404
   PASS  the quote signer is set, because every route depends on it True
-  PASS  the voucher signer is NOT set, so no discount can be granted True
+  PASS  the voucher signer is set too, since 2026-09-03            True
 
 H1 - the floor is co-signed, and it bound
 -------------------------------------------------------------------------

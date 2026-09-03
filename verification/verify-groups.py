@@ -342,17 +342,21 @@ if ALGOD_URL:
         True,
         signers.get("quote_signer", b"") not in (b"", bytes(32)),
     )
+    # Set on 2026-09-03. It was zero for this contract's whole life before
+    # that, and the check asserting so is what said this had changed - within a
+    # day of the paragraph claiming it. Pinned in the direction the report now
+    # states, so the next change is caught the same way.
     check(
-        "the voucher signer is NOT set, so no discount can be granted",
+        "the voucher signer is set too, since 2026-09-03",
         True,
-        signers.get("voucher_signer", bytes(32)) in (b"", bytes(32)),
+        signers.get("voucher_signer", bytes(32)) not in (b"", bytes(32)),
     )
 else:
     skip("the retired application really is gone", "no ALGOD_URL")
     skip("and the live one carries the `paused` key set_paused added", "no ALGOD_URL")
     skip("the application the evidence called is retired too", "no ALGOD_URL")
     skip("the quote signer is set, because every route depends on it", "no ALGOD_URL")
-    skip("the voucher signer is NOT set, so no discount can be granted", "no ALGOD_URL")
+    skip("the voucher signer is set too, since 2026-09-03", "no ALGOD_URL")
 
 # ===========================================================================
 section("H1 - the floor is co-signed, and it bound")

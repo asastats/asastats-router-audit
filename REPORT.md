@@ -148,24 +148,30 @@ mainnet deployment before them. The manifest records
 `"RESTRICT_TO_ADMIN": 0`; `verify.sh` reads that file rather than describing
 it, and [evidence/](evidence/) shows the column empty on chain.
 
-**One of the contract's two signing keys is not in use, on either network.**
-`voucher_signer` is `NO_VOUCHER_SIGNER` — the zero address — on mainnet
-`3692588382` and on testnet `770893297`, read from global state on 2026-09-03.
-So `verify_discount` verifies nothing and `_discount` grants nothing: the fee
-discount the design provides for has never been switched on anywhere.
+**Both of the contract's signing keys are now named on mainnet, and only one
+of them is doing anything.** `quote_signer` has been set since the deployment;
+`voucher_signer` was `NO_VOUCHER_SIGNER` — the zero address — until it was set
+on **2026-09-03**. Testnet `770893297` still carries none.
 
-That is the contract behaving as written rather than a misconfiguration. An
-unset signer makes a voucher **ignored, not refused** — `_verify_voucher`
-returns early and `_discount` returns zero — which is the same path a
-revocation takes, and it is why revoking a compromised voucher key degrades
-every voucher in flight to the full fee instead of stranding it. The effect
-today is that everyone pays the full 5 bps and no discount can be granted by
-anybody, including an attacker who obtained a key that does not exist.
+An unset voucher signer makes a voucher **ignored, not refused** —
+`_verify_voucher` returns early and `_discount` returns zero — which is the
+same path a revocation takes, and it is why revoking a compromised voucher key
+degrades every voucher in flight to the full fee instead of stranding it. That
+is the contract behaving as written, not a misconfiguration, and it is why the
+key could sit unset for the whole of this contract's life without anything
+failing.
 
-Worth stating because a reader of the threat model would otherwise assume two
-live keys where there is one. The quote signer is the key that matters, and
-`S8` is about where it lives. `verify-groups.py` reads both from the chain, so
-this is a check rather than a claim.
+**A discount still reaches nobody, for a different reason.** The chain will now
+honour a voucher; the engine does not yet mint one, because
+`ROUTER_VOUCHER_SEED` is unset. Until it is, `core.router.honoured_discount`
+prices the discount, finds no voucher rides, and re-quotes at the full rate —
+so callers are quoted what they are charged. That guard exists because they
+were not: while `voucher_signer` was zero, every `DISCOUNT_BANDS` holder was
+quoted a discounted rate and skimmed in full, by at most 2.5 basis points.
+
+`verify-groups.py` reads both keys from the chain, so which of them is set is a
+check rather than a claim — and the check is what caught this paragraph going
+stale within a day of being written.
 
 ### 3.1 The two entry points that do not assert group hygiene
 
