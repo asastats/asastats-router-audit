@@ -11,16 +11,17 @@ own. For the contract, read [REPORT.md](REPORT.md).
   `router/sweep.py`, `router/selection.py`, `engine/core/sweep.py`, and the
   wallet bridge's `signAndSend`
 - **Verification:** [verification/verify-sweep.sh](verification/verify-sweep.sh)
-  — 84 checks, all passing and **none skipped**: the three that need a node were
+  — 89 checks, all passing and **none skipped**: the three that need a node were
   run against mainnet over an SSH-forwarded algod; plus six sweep groups that executed on mainnet, in
   [evidence/](evidence/). Those groups are now a fixture in the widget's own
   suite as well: `S6`'s fix is a rule about router groups, so its accepting
   cases are 97 transactions that executed rather than fixtures written to pass.
 - **Findings:** eight from the audit proper — seven Medium and one
-  Informational. Seven are fixed, five of those deployed (`S3`'s contract half
-  went live on 2026-08-30; see §2) and the `S6`/`S7` fixes in the widget and
-  not yet released. **`S8` is open** and, unlike the rest, has no complete fix
-  available on either side.
+  Informational. **All eight are now fixed**, five of them deployed (`S3`'s
+  contract half went live on 2026-08-30; see §2). The `S6`/`S7` fixes are in
+  the widget and not yet released, and `S8`'s — the quote signer's destination
+  stage, 2026-09-03 — is in the code but not yet provisioned, so the engine
+  still holds the signing key.
 - **Nine more, `S9`–`S17`, found on 2026-09-02** by reading the same code
   again rather than by testing it — two Medium in the planner, two Medium in
   the engine half, two Low and four Informational. All fixed. Two are direct
@@ -54,7 +55,7 @@ read the rest with the same intent.
 | [`S5`](findings/S5-malformed-evaluation-raises.md) | Info | A malformed evaluation took the whole sweep down rather than degrading | **Fixed** |
 | [`S6`](findings/S6-convert-path-unchecked.md) | Medium | The conversion path is checked by nothing the engine does not choose | **Fixed** |
 | [`S7`](findings/S7-mirror-without-the-router.md) | Medium | The mirrored guard copied the cheap half and left the load-bearing one | **Fixed** |
-| [`S8`](findings/S8-transfer-alongside-a-route.md) | Medium | A hostile transfer rides alongside a genuine route call | **Open** — demonstrated against the shipped code |
+| [`S8`](findings/S8-transfer-alongside-a-route.md) | Medium | A hostile transfer rides alongside a genuine route call | Fixed 2026-09-03 — the quote signer now derives where a group may pay |
 
 The six Medium ones share a precondition worth stating plainly: **none is
 reachable by an unprivileged remote attacker.** `S2`, `S3` and `S6` need the
@@ -70,8 +71,10 @@ exposes is unbounded.
 **Three of these were found by reviewing fixes, not code.** `S6` came from
 reviewing `S2`/`S3`, `S7` from reviewing `S6`, and `S8` from reviewing `S7`;
 each fix was sound about the thing it was aimed at and wrong about its own
-edges. `S8` is where that chain stops: it is open because the next rule in the
-sequence would refuse a conversion that has actually executed. That is worth recording as
+edges. `S8` is where that chain stopped for two days: the next rule in the
+sequence — that the note accounts for every movement — would refuse a
+conversion that has actually executed, so closing it needed a different rule
+rather than a stricter one. That is worth recording as
 a pattern, because it is the same one `S1` established: the dangerous moment is
 not writing a control, it is believing the control covers what its name says.
 

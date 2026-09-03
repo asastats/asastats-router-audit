@@ -583,7 +583,11 @@ check "which is the application the audit pins to mainnet" "1" \
 # The two entry points that skip the contract's guard cannot count as "called".
 check "the exempt selectors are both excluded" "2" \
     "$(sed -n '/^var BUDGET_ONLY_SELECTORS/,/^];/p' "${WIDGET}" | grep -c '0x')"
-cat > "${WORK}/selectors.py" <<'SEL'
+# NOT `selectors.py`: these helpers run from ${WORK}, so a file of that
+# name shadows the standard library module `subprocess` imports, and
+# every later helper here dies on an import that has nothing to do with
+# what it checks. It cost the S8 signer check a silent SKIP.
+cat > "${WORK}/budget_selectors.py" <<'SEL'
 """Are the two excluded selectors the ones the contract actually exposes?
 
 Hardcoding four bytes is fine; hardcoding the wrong four bytes silently turns
@@ -609,13 +613,14 @@ have = {
 print("ok" if have == want else "mismatch have=%s want=%s" % (sorted(have), sorted(want)))
 SEL
 check "...and they are the selectors the contract actually exposes" "ok" \
-    "$("${PYTHON}" "${WORK}/selectors.py" "${WIDGET}" 2>/dev/null || echo unknown)"
+    "$("${PYTHON}" "${WORK}/budget_selectors.py" "${WIDGET}" 2>/dev/null || echo unknown)"
 
 echo
-echo "S8 — what still gets through, and why the obvious rule cannot be it (OPEN)"
+echo "S8 — the browser cannot bound this, and the signer now does (FIXED)"
 echo "-------------------------------------------------------------------------"
-# Pins an OPEN finding: these assert the gap and the reason it is not closed.
-# Invert them only if a complete fix lands.
+# These pin the gap *in the browser and the contract*, which is unchanged and
+# is why the fix went where it did. The closing checks are at the end of the
+# section: they run the signer over the same demonstrated attack.
 
 check "the route binds only the transaction before it" "1" \
     "$(grep -c 'input must immediately precede the route' "${CONTRACT}")"
@@ -706,13 +711,72 @@ S8
     if node "${WORK}/s8.js" > "${WORK}/s8.txt" 2>/dev/null; then
         check "a genuine conversion is accepted" "accepted" \
             "$(sed -n 's/^s8.honest=//p' "${WORK}/s8.txt")"
-        check "...and so is the same group carrying a hostile transfer" \
+        check "...and the browser still accepts a hostile transfer beside it" \
             "accepted" "$(sed -n 's/^s8.attacked=//p' "${WORK}/s8.txt")"
     else
         skip "the S8 vector, demonstrated" "node could not run it"
     fi
 else
     skip "the S8 vector, demonstrated" "needs node and the mainnet-groups fixture"
+fi
+
+# **The same two groups, put to the signer.** The browser answers "accepted" to
+# both above; this is the layer that tells them apart, and these two checks are
+# what say S8 is closed rather than described as closed.
+if [ -f "${ROUTER}/router/signer/venues.py" ] && [ -f "${FIXTURE}" ]; then
+    cat > "${WORK}/s8signer.py" <<'SIGNER8'
+import json, sys
+sys.path.insert(0, sys.argv[1])
+from algosdk import account, encoding, transaction
+from router.contract import Deployment
+from router.signer.venues import Venues
+from router.signer.verify import authorisation_problems
+
+groups = json.loads(open(sys.argv[2]).read())
+group = [encoding.msgpack_decode(one) for one in groups["sweep_6_convert"]]
+executed = int.from_bytes(bytes(group[-1].note)[0:8], "big")
+deployment = Deployment(
+    router_app_id=executed, tinyman_validator=1002541853, stamm_budget=0,
+    stamm_opup=0, stamm_opup_count=0, restricted=False,
+)
+venues = Venues(deployment, algod_client=None, network="mainnet")
+print("s8.signer.honest=" + ("refused" if authorisation_problems(group, executed, venues) else "accepted"))
+
+params = transaction.SuggestedParams(
+    fee=1000, first=group[0].first_valid_round, last=group[0].last_valid_round,
+    gh=group[0].genesis_hash, gen=group[0].genesis_id, flat_fee=True,
+)
+hostile = transaction.AssetTransferTxn(
+    sender=group[0].sender, sp=params, receiver=account.generate_account()[1],
+    amt=1_000_000, index=31566704,
+)
+attacked = group[:-1] + [hostile, group[-1]]
+for txn in attacked:
+    txn.group = None
+transaction.assign_group_id(attacked)
+print("s8.signer.attacked=" + ("refused" if authorisation_problems(attacked, executed, venues) else "accepted"))
+SIGNER8
+    if "${PYTHON}" "${WORK}/s8signer.py" "${ROUTER}" "${FIXTURE}" \
+        > "${WORK}/s8signer.txt" 2>/dev/null; then
+        check "the signer accepts the conversion that executed" "accepted" \
+            "$(sed -n 's/^s8.signer.honest=//p' "${WORK}/s8signer.txt")"
+        check "...and refuses the same group carrying the hostile transfer" \
+            "refused" "$(sed -n 's/^s8.signer.attacked=//p' "${WORK}/s8signer.txt")"
+    else
+        skip "S8 closed at the signer" "could not run the signer"
+    fi
+
+    # The rule is only as good as its provider whitelists agreeing with the
+    # contract's, which is why there is one copy of them.
+    check "the signer reads the whitelists the contract compiles in" "1" \
+        "$(grep -c 'from router.providers import' "${ROUTER}/router/signer/venues.py")"
+    check "...and the deploy script reads the same ones" "1" \
+        "$(grep -c 'from router.providers import' "${ROUTER}/scripts/deploy.py")"
+    check "a destination is derived, never taken from the group" "0" \
+        "$(sed -n '/^def allowed_destinations/,/^    return allowed/p' \
+            "${ROUTER}/router/signer/venues.py" | grep -c 'txn.accounts\|foreign_apps')"
+else
+    skip "S8 closed at the signer" "needs the router checkout and the fixture" 4
 fi
 
 # Why the tempting fix - committing the group's shape in the co-signed note -

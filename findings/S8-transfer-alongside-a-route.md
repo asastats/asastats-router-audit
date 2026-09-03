@@ -5,10 +5,13 @@
 - **Component:** off-chain — `dustsweep.js` `routedGroupProblems`; and the
   contract, which does not constrain group composition either
 - **Origin:** review of the `S7` fix, 2026-09-01
-- **Status:** **Open**, and confirmed against the shipped code in §7. No
-  complete fix is available in the browser or in the contract; §6 records two
-  partial mitigations and §8 the one option that would close it, which is
-  infrastructure rather than a patch.
+- **Status:** **Fixed, 2026-09-03**, by option B in §8 — the quote signer moved
+  to its own service, which now refuses any caller movement paying an address
+  the group's own application calls do not make legitimate. §9 records what
+  landed, including the two places this finding's own proposed design was
+  wrong. Mitigation 1 (§6) shipped separately on 2026-09-02 and remains.
+  **Not yet deployed:** the fix is in the code, and the engine holds the
+  signing key until the service is provisioned.
 
 ---
 
@@ -247,6 +250,55 @@ Closing this needs **destination** verification — every caller movement must
 pay the router's application account or a pool the group's own provider calls
 legitimately use — which is option A's expensive part, moved to the one place
 it is affordable. That is a separate stage.
+
+## 9. What closed it, 2026-09-03 — and where §8 was wrong
+
+The destination stage landed: `router/signer/venues.py`, wired into
+`authorisation_problems`. A movement the note does not enumerate is authorised
+only if its receiver is an address **derived** from the group's own application
+calls, under the same provider rules the contract applies to the legs it runs:
+
+| provider | how the destination is established |
+|---|---|
+| Tinyman v1/v2 | the pool is a logic signature, so its address is recomputed from the validator and an asset pair |
+| Pact | the pool's creator must be one of `PACT_POOL_CREATORS`; a weighted pool's deposit goes to a vault whose application id the pool's own state names |
+| STAMM | creator, as `STAMM_POOL_CREATORS` |
+| AlgoFi | membership of the explicit `ALGOFI_POOLS` list |
+
+Nothing there reads a field the group asserts — not `accounts`, not
+`foreign_apps`. That distinction is the whole security argument: an attacker
+can put any address in a transaction, and cannot make it *be* the Tinyman pool
+for a pair or make Pact have created their application. The whitelists moved to
+`router/providers.py` so the signer and the compiled contract read one copy.
+
+**§8 was wrong about the design.** It proposed a signer that "re-derives the
+group from the plan". That cannot work: reserves move between the engine's
+quote and any re-derivation, so the comparison needs a tolerance, and a
+tolerance is a hole. The signer needs no plan at all — the note already carries
+what the route may spend, and everything else is answered by where it is going.
+
+**§3 was wrong about the cost, in the direction that mattered.** It rejected
+enumerating destinations as re-implementing route knowledge. Enumerating them
+*in the wallet* would have been; enumerating them beside the contract's own
+whitelists is four rules and one cached chain read.
+
+**What proves it refuses nothing honest.** Not the seven groups in `evidence/`,
+which are too thin a base for a rule whose failure mode is a broken conversion.
+`router/scripts/signer_corpus.py` builds live groups through `group_for_quote`
+— the entry point the engine itself calls — across every ordered pair of eight
+assets at four sizes, and runs the rule over every unenumerated movement in
+each. Every provider is represented. It exits non-zero if one is refused.
+
+**The residual, stated rather than hidden.** The Tinyman derivation pairs over
+the assets the group moves for value, so an attacker who first gets the caller
+holding a token they created, and then moves a unit of it, can reach a pool
+whose liquidity is theirs. That needs a compromised engine *and* an accepted
+airdrop, it yields only what a pool pays back rather than the transfer, and
+`convertedInputProblems` refuses it independently in the browser.
+
+And the signer still does not judge whether `minimum` is a *fair* floor. The
+contract takes it on faith and so does this. A compromised engine can quote a
+bad price; it can no longer move the money somewhere else.
 
 ### The recommendation, as it stood
 

@@ -11,7 +11,7 @@
 3. **Re-verified every prior finding against the source.** Not against the
    previous report. Where a mitigation was claimed, the code implementing it
    was located and quoted.
-4. **Turned each claim into a command.** 186 checks across
+4. **Turned each claim into a command.** 191 checks across
    [verify.sh](../verification/verify.sh),
    [verify-sweep.sh](../verification/verify-sweep.sh) and
    [verify-groups.py](../verification/verify-groups.py), output recorded.

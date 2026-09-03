@@ -50,7 +50,7 @@ bound there is. See [`S3` §7](S3-unbounded-fee.md).
 | [`S5`](S5-malformed-evaluation-raises.md) | Info | A malformed evaluation took the whole sweep down rather than degrading | **Fixed** `cc9a4ff` / `d1365dc` |
 | [`S6`](S6-convert-path-unchecked.md) | Medium | The conversion path is checked by nothing the engine does not choose | **Fixed** |
 | [`S7`](S7-mirror-without-the-router.md) | Medium | The mirrored guard copied the cheap half and left the load-bearing one | **Fixed** |
-| [`S8`](S8-transfer-alongside-a-route.md) | Medium | A hostile transfer rides alongside a genuine route call | **Open** |
+| [`S8`](S8-transfer-alongside-a-route.md) | Medium | A hostile transfer rides alongside a genuine route call | **Fixed** 2026-09-03, in the quote signer |
 
 ## Found on 2026-09-02, reading the same code again
 

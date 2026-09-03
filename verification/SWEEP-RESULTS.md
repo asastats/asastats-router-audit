@@ -3,12 +3,6 @@
 Output of `./verify-sweep.sh` on the revisions named below. Re-run it yourself:
 
 ```
-ROUTER=/path/to/router WIDGETS=/path/to/widgets ENGINE=/path/to/engine \
-ALGOD_URL=https://your-node SWEEP_ADDRESS=SOMEADDRESS… \
-    ./verify-sweep.sh
-```
-
-```
 
 S2 — is the forfeit destination bound to something outside the response?
 -------------------------------------------------------------------------
@@ -102,7 +96,7 @@ S7 — does the conversion path require the checks to actually run?
   PASS  the exempt selectors are both excluded                   2
   PASS  ...and they are the selectors the contract actually exposes ok
 
-S8 — what still gets through, and why the obvious rule cannot be it (OPEN)
+S8 — the browser cannot bound this, and the signer now does (FIXED)
 -------------------------------------------------------------------------
   PASS  the route binds only the transaction before it           1
   PASS  the hygiene guard is still the thing being read          1
@@ -111,7 +105,12 @@ S8 — what still gets through, and why the obvious rule cannot be it (OPEN)
   PASS  and the browser bounds no receiver either                0
   PASS  a conversion that executed pays a non-router address     1
   PASS  a genuine conversion is accepted                         accepted
-  PASS  ...and so is the same group carrying a hostile transfer  accepted
+  PASS  ...and the browser still accepts a hostile transfer beside it accepted
+  PASS  the signer accepts the conversion that executed          accepted
+  PASS  ...and refuses the same group carrying the hostile transfer refused
+  PASS  the signer reads the whitelists the contract compiles in 1
+  PASS  ...and the deploy script reads the same ones             1
+  PASS  a destination is derived, never taken from the group     0
   PASS  the quote signer key is read in the engine's own process 2
   PASS  ...from a path on the engine's own host                  2
   PASS  _validate_group is there to be read                      1
@@ -126,6 +125,5 @@ context
   PASS  unpriced is the only disposition that starts off         1
 
 -------------------------------------------------------------------------
-  84 passed, 0 failed, 0 skipped
-
+  89 passed, 0 failed, 0 skipped
 ```

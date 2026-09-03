@@ -34,12 +34,14 @@ in the browser — and then [`S7`](findings/S7-mirror-without-the-router.md),
 because that mirror copied the hygiene half of the guard, which is not the half
 that refuses a plain transfer to a stranger. Nothing in the contract changed
 for either. Reviewing `S7` in turn produced
-[`S8`](findings/S8-transfer-alongside-a-route.md), which is **open**: a
-transfer added to an otherwise genuine routed group is examined by nothing,
-because `_input_amount` binds only the transaction immediately preceding the
-route and the hygiene guard never reads an amount or a receiver. It is not
-closable by a receiver whitelist on either side — a sweep legitimately pays
-pool escrows — so it stays open with partial mitigations rather than a fix that
+[`S8`](findings/S8-transfer-alongside-a-route.md), **fixed on 2026-09-03**
+after being published open: a transfer added to an otherwise genuine routed
+group was examined by nothing, because `_input_amount` binds only the
+transaction immediately preceding the route and the hygiene guard never reads
+an amount or a receiver. This report said it was not closable by a receiver
+whitelist, since a sweep legitimately pays pool escrows. That was right about
+the browser and wrong about the signer, which can derive those escrows from the
+group's own application calls — see the finding's §9 for what
 would look complete. Nothing in the contract changed for any of the three. See
 §3.1 and §4.0.
 
@@ -231,9 +233,10 @@ the group to contain a call to a **guarded** entry point — not `pool_budget` o
 alone was never the safety argument. The application id is handed down by the
 Django view rather than read from the plan.
 
-[`S8`](findings/S8-transfer-alongside-a-route.md) — **Medium, open.** `S7`
-makes a conversion group prove this contract is in it. Nothing makes it prove
-the group does nothing else, and `_input_amount` binds only the transaction
+[`S8`](findings/S8-transfer-alongside-a-route.md) — **Medium, fixed
+2026-09-03 in the quote signer, not in the contract.** `S7` makes a conversion
+group prove this contract is in it. Nothing in the contract makes it prove the
+group does nothing else, and `_input_amount` binds only the transaction
 immediately preceding the route:
 
 ```python
