@@ -57,7 +57,7 @@ warning; it is what makes it load-bearing.** See [DISCLAIMER.md](DISCLAIMER.md).
 
 ## Check it yourself
 
-Every factual claim in the reports is a command. 186 of them:
+Every factual claim in the reports is a command. 198 of them:
 
 ```bash
 cd verification
@@ -67,9 +67,10 @@ python3 verify-groups.py                        # what the chain did — 65
 ```
 
 `verify.sh` needs no node, no credentials and no network. `verify-sweep.sh`
-needs node.js and, for three of its checks, a mainnet algod — 81 without one.
+needs node.js and, for three of its checks, a mainnet algod — 91 without one.
 `verify-groups.py` runs offline against the transactions in
-[evidence/](evidence/) — 58 — and adds four more when a node is configured.
+[evidence/](evidence/) — 58 — and adds seven more when a node is configured.
+Without a node anywhere, that is 188 of the 198.
 
 **All three count what they skipped, and say so on the last line.** That is not
 decoration: `verify.sh` had no skip counter at all, so an absent deployment

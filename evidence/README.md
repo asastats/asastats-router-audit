@@ -7,7 +7,7 @@ them.
 
 **This is the first time any audit in this series has checked a claim against a
 running system.** The five before it, and the source-reading half of this one,
-answer *does the code say this?* — 123 checks across
+answer *does the code say this?* — 133 checks across
 [verify.sh](../verification/verify.sh) and
 [verify-sweep.sh](../verification/verify-sweep.sh) that read
 `router_app.py`, the sweep planner and the browser control. Nothing in either
@@ -23,7 +23,7 @@ group that executed. That is what this directory is.
 
 ```sh
 python3 ../verification/verify-groups.py                # 58 checks, no node
-ALGOD_URL=… ALGOD_TOKEN=… python3 ../verification/verify-groups.py   # 63
+ALGOD_URL=… ALGOD_TOKEN=… python3 ../verification/verify-groups.py   # 65
 ```
 
 Recorded output: [GROUP-RESULTS.md](../verification/GROUP-RESULTS.md).
